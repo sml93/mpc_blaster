@@ -2,7 +2,7 @@ import sys
 sys.path.insert(0, '../classes')
 sys.path.insert(0, '../utils')
 
-import shutil
+import shutilA
 from acados_template import AcadosModel
 from acados_template import AcadosOcp, AcadosOcpSolver, AcadosSimSolver, AcadosSim
 from casadi import *
@@ -17,6 +17,9 @@ class Jacobian_POC_Solver:
 
 
     def __init__(self, streamVelocity, M_c, Ts): 
+
+        """To do: 
+        1. Maybe change to variable step for final step."""
 
         self._streamVelocity = streamVelocity
         self._M_c = M_c
@@ -97,7 +100,7 @@ class Jacobian_POC_Solver:
         error = 100 # For initialisation sake
         steps_taken = 0
 
-        while np.abs(error) > 5e-1: 
+        while np.abs(error) > 1e-2: 
 
             T_Nplus1 = self._rootFindingStep(T_N, function)
             if T_Nplus1 < 0: 
@@ -106,7 +109,7 @@ class Jacobian_POC_Solver:
             T_N = T_Nplus1
             steps_taken += 1
         
-            print(error)
+            print("Error: ", error)
 
         return T_Nplus1 
 
@@ -192,12 +195,12 @@ class Jacobian_POC_Solver:
 
 if __name__ == "__main__":
 
-    solver = Jacobian_POC_Solver(20, 1.0, 0.0025)
+    solver = Jacobian_POC_Solver(20, 1.0, 0.00015)
     solver._createIntegrator()
     mag = solver._getMag(152, 50)
     initConditions = np.array([0.5, 2.0, 4.0, mag[0], mag[1], mag[2]])
     solver.setInitConditions(initConditions)
     t0 = time.time()
-    sol = solver._solveRootFindingProblem(0.01, solver._function)
+    sol = solver._solveRootFindingProblem(0.001, solver._function)
     print("Time Elapsed: ",time.time() - t0)
     solver._simulateBlastPlot(sol)
