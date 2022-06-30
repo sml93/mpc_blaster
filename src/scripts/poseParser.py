@@ -1,5 +1,4 @@
 from __future__ import division
-from turtle import pos
 
 import rospy
 import unittest
@@ -7,7 +6,7 @@ import numpy as np
 
 from geometry_msgs.msg import PoseStamped
 
-class poseParser():
+class poseParser(unittest.TestCase):
   def __init__(self, *args):
     super(poseParser, self).__init__(*args)
 
