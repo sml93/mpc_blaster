@@ -21,6 +21,7 @@ class Jacobian_POC_Solver:
         self._streamVelocity = streamVelocity
         self._M_c = M_c
         self._Ts = Ts
+        self._initConditions = np.zeros(6)
 
     def _getMag(self, vel, ang):
         angle = np.deg2rad(ang)
@@ -82,13 +83,45 @@ class Jacobian_POC_Solver:
         # Return states
         return sol
 
-    def _solveRootFindingProblem(self): 
+
+    def _solveRootFindingProblem(self, initialGuess, function): 
+
+        """Initial guess is the amount of time to hit the ground.
+        Function is the term that needs to be solved for zero."""
 
         # Use root-finding algorithm 
         #
         # Get time required for fluid to hit the ground
 
-        pass
+        T_N = initialGuess
+        error = 100 # For initialisation sake
+        steps_taken = 0
+
+        while np.abs(error) > 5e-1: 
+
+            T_Nplus1 = self._rootFindingStep(T_N, function)
+            if T_Nplus1 < 0: 
+                T_Nplus1 = 0
+            error = function(T_Nplus1)
+            T_N = T_Nplus1
+            steps_taken += 1
+        
+            print(error)
+
+        return T_Nplus1 
+
+    def _rootFindingStep(self, T_N, function):
+
+        # Just to solve 1 step.
+
+        f = function(T_N)
+        delta_T_N = 1e-1
+        T_N_plus = T_N + delta_T_N
+        f_prime = (function(T_N_plus) - f)/delta_T_N
+
+        T_Nplus1 = T_N - (f / f_prime) 
+
+        return T_Nplus1
 
     def solveJacobians(self, R_Nozzle): 
 
@@ -98,6 +131,10 @@ class Jacobian_POC_Solver:
 
 
         pass
+
+    def setInitConditions(self, initConditions):
+
+        self._initConditions = initConditions
 
     def getJacobians(self): 
 
@@ -115,9 +152,16 @@ class Jacobian_POC_Solver:
 
     def _simulateBlast(self, T): 
 
-        N = T / self._Ts
+        N = int(T / self._Ts)
+        x = initConditions
 
-    def _simulateBlastPlot(self, T, initConditions): 
+        for i in range(N): 
+
+            x = self._solveForwardIntegration(x)
+
+        return x
+
+    def _simulateBlastPlot(self, T): 
 
         N = int(T / self._Ts)
 
@@ -135,23 +179,25 @@ class Jacobian_POC_Solver:
             data[i+1, :] = x
 
         ax = plt.axes(projection='3d')
-        # ax.set_xlim3d([-0.3, 0.3])
         ax.set_xlabel('X')
-
-        # ax.set_ylim3d([-0.3, 0.3])
         ax.set_ylabel('Y')
-
-        # ax.set_zlim3d([0.0, 0.5])
         ax.set_zlabel('Z')
         ax.plot3D(data[:, 0], data[:, 1], data[:, 2])
 
         plt.show()
 
+    def _function(self, T_N):
+
+        return self._simulateBlast(T_N)[2]
 
 if __name__ == "__main__":
 
-    solver = Jacobian_POC_Solver(20, 1.0, 0.01)
+    solver = Jacobian_POC_Solver(20, 1.0, 0.0025)
     solver._createIntegrator()
-    mag = solver._getMag(152, 20)
+    mag = solver._getMag(152, 50)
     initConditions = np.array([0.5, 2.0, 4.0, mag[0], mag[1], mag[2]])
-    solver._simulateBlastPlot(0.1, initConditions)
+    solver.setInitConditions(initConditions)
+    t0 = time.time()
+    sol = solver._solveRootFindingProblem(0.01, solver._function)
+    print("Time Elapsed: ",time.time() - t0)
+    solver._simulateBlastPlot(sol)
