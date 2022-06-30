@@ -2,7 +2,7 @@ import sys
 sys.path.insert(0, '../classes')
 sys.path.insert(0, '../utils')
 
-import shutilA
+import shutil
 from acados_template import AcadosModel
 from acados_template import AcadosOcp, AcadosOcpSolver, AcadosSimSolver, AcadosSim
 from casadi import *
