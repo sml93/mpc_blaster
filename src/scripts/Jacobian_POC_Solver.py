@@ -22,6 +22,13 @@ class Jacobian_POC_Solver:
         self._M_c = M_c
         self._Ts = Ts
 
+    def _getMag(self, vel, ang):
+        angle = np.deg2rad(ang)
+        anglex = vel*np.sin(angle)
+        angley = 0
+        anglez = -vel*np.cos(angle)
+        return anglex, angley, anglez
+
     def _createIntegrator(self): 
 
         # Initialise states
@@ -145,5 +152,6 @@ if __name__ == "__main__":
 
     solver = Jacobian_POC_Solver(20, 1.0, 0.01)
     solver._createIntegrator()
-    initConditions = np.array([0.5, 2.0, 4.0, 140.9550, 0, -51.30])
+    mag = solver._getMag(152, 20)
+    initConditions = np.array([0.5, 2.0, 4.0, mag[0], mag[1], mag[2]])
     solver._simulateBlastPlot(0.1, initConditions)
