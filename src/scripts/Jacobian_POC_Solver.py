@@ -172,7 +172,7 @@ class Jacobian_POC_Solver:
 
         # run getInitConditions
 
-        x = initConditions
+        x = self._initConditions
 
         data[0, :] = x
 
@@ -191,7 +191,16 @@ class Jacobian_POC_Solver:
 
     def _function(self, T_N):
 
+        """This function assumes that we are shooting on the ground. 
+        If we are shooting onto the side of a wall, try: 
+        return || self._simulateBlast(T_N)[0] + self._simulateBlast(T_N)[1] ||"""
+
         return self._simulateBlast(T_N)[2]
+
+    def _solveFiniteDifferences(): 
+
+        pass
+
 
 if __name__ == "__main__":
 
