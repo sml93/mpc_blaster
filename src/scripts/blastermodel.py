@@ -1,6 +1,7 @@
 import sys
-sys.path.insert(0, '../utils')
+sys.path.insert(0, '../..')
 
+from utils import MathUtils
 from acados_template import AcadosModel
 from acados_template import AcadosOcp, AcadosOcpSolver, AcadosSimSolver, AcadosSim
 from casadi import *
@@ -12,9 +13,11 @@ import time
 
 class blasterModel: 
 
-    def __init__(self): 
+    def __init__(self, mass, J): 
 
-        pass 
+        self._M = mass
+        self._J = J
+
 
     def generateModel(self):
 
@@ -36,6 +39,16 @@ class blasterModel:
         v = SX.sym('v', 3)
         alpha = SX.sym('alpha', 1)
         beta = SX.sym('beta', 1)
+        T = SX.sym('T', 4)
+        gravity = SX([0, 0, -9.81])
 
         p_dot = v
-        # eta = 
+        eta_dot = MathUtils.quatMultiplication(eta, vertcat(0, omega/2))
+        v_dot = 1/self._M * MathUtils.quatMultiplication(MathUtils.quatMultiplication(eta, vertcat(0, 0, 0, T[0] + T[1] + T[2] + T[3])), MathUtils.unitQuatInversion(eta))[1:4] + gravity
+        print(MathUtils.quatMultiplication(MathUtils.quatMultiplication(eta, vertcat(0, 0, 0, T[0] + T[1] + T[2] + T[3])), MathUtils.unitQuatInversion(eta)))
+        omega_dot = 0
+
+if __name__ == "__main__": 
+
+    b = blasterModel(7.5, 0)
+    b.generateModel()
