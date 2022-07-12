@@ -18,8 +18,21 @@ class Jacobian_POC_Solver:
 
     def __init__(self, streamVelocity, M_c, Ts): 
 
-        """To do: 
-        1. Maybe change to variable step for final step."""
+        """
+
+            How to use this solver: 
+            
+                1. Based on UAV position, set initial conditions.
+                    a. We need 4 main states. (x, y, z position of the drone and initial vel_x,y,z of the fluids out of the UAV.
+                2. To solve for Jacobian, need to perform finite differences on: 
+                    a. Orientation of vehicle, 
+                    b. Orientation of nozzle, 
+                    c. Position of vehicle. 
+                3. Then, the Jacobians can be appended to the controller model to better predict 
+                    a. POC 
+                    b. Reaction forces acting on the UAV. 
+        
+        """ 
 
         self._streamVelocity = streamVelocity
         self._M_c = M_c
@@ -68,17 +81,17 @@ class Jacobian_POC_Solver:
         sim.model = model
         sim.solver_options.T = self._Ts
         sim.solver_options.integrator_type = 'ERK'
-        sim.solver_options.num_stages = 2
-        sim.solver_options.num_steps = 1
+        sim.solver_options.num_stages = 4
+        sim.solver_options.num_steps = 10
 
         # Create integrator. 
 
         self.integrator = AcadosSimSolver(sim)
 
-    def _solveForwardIntegration(self, initConditions): 
+    def _solveForwardIntegration(self, initConditions, T): 
 
         # Set initial conditions
-        
+        self.integrator.set('T', T)
         self.integrator.set('x', initConditions)
         # Integrate 
         self.integrator.solve()
@@ -95,6 +108,9 @@ class Jacobian_POC_Solver:
         # Use root-finding algorithm 
         #
         # Get time required for fluid to hit the ground
+
+        # Takes about 0.005 - 0.09 seconds depending on how small the time step is with the old step. 
+        # New method takes about 0.0007 seconds.
 
         T_N = initialGuess
         error = 100 # For initialisation sake
@@ -153,17 +169,6 @@ class Jacobian_POC_Solver:
 
         return initConditions
 
-    def _simulateBlast(self, T): 
-
-        N = int(T / self._Ts)
-        x = initConditions
-
-        for i in range(N): 
-
-            x = self._solveForwardIntegration(x)
-
-        return x
-
     def _simulateBlastPlot(self, T): 
 
         N = int(T / self._Ts)
@@ -172,14 +177,25 @@ class Jacobian_POC_Solver:
 
         # run getInitConditions
 
+        self.integrator.set('T', self._Ts)
         x = self._initConditions
 
         data[0, :] = x
 
         for i in range(N): 
 
-            x = self._solveForwardIntegration(x)
+            x = self._solveForwardIntegration(x, self._Ts)
             data[i+1, :] = x
+
+        print(T)
+        
+        self.integrator.set('x', self._initConditions)
+        self.integrator.set('T', 0.0416623212)
+        # Integrate 
+        self.integrator.solve()
+        sol = self.integrator.get('x')
+        print(sol)
+
 
         ax = plt.axes(projection='3d')
         ax.set_xlabel('X')
@@ -195,7 +211,7 @@ class Jacobian_POC_Solver:
         If we are shooting onto the side of a wall, try: 
         return || self._simulateBlast(T_N)[0] + self._simulateBlast(T_N)[1] ||"""
 
-        return self._simulateBlast(T_N)[2]
+        return self._solveForwardIntegration(self._initConditions, T_N)[2]
 
     def _solveFiniteDifferences(): 
 
