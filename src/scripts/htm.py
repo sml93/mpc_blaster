@@ -25,21 +25,21 @@ hob = np.array([[np.cos(psi_ob), np.sin(psi_ob), 0, lob*np.cos(gamma_ob)*np.cos(
                 [0,              0,              0, 1]])
 
 ''' From b to s: @ s1 '''
-hbs1 = np.array([[np.cos(theta),   0, np.sin(theta), lbs*np.cos(ybs)*np.cos(theta)],
+hbs1 = np.array([[np.cos(alpha1-theta),   0, np.sin(alpha1-theta), lbs*np.cos(ybs)*np.cos(theta)],
                  [ 0,              1, 0,             y],
-                 [ -np.sin(theta), 0, np.cos(theta), lbs*np.sin(ybs)*np.cos(theta)],
+                 [ -np.sin(alpha1-theta), 0, np.cos(alpha1-theta), lbs*np.sin(ybs)*np.cos(theta)],
                  [ 0,              0, 0,             1]])
 
 ''' From s1 to s2: @ s2'''
-hs1s2 = np.array([[np.cos(theta),   0,  np.sin(theta), ls1s2*np.cos(alpha1-theta+np.pi/2)*np.cos(theta)],
+hs1s2 = np.array([[np.cos(alpha1-theta),   0,  np.sin(alpha1-theta), ls1s2*np.cos(alpha1-theta+np.pi/2)*np.cos(theta)],
                   [ 0,              1,  0,             y ],
-                  [ -np.sin(theta), 0,  np.cos(theta), ls1s2*np.sin(alpha1-theta-np.pi/2)*np.cos(theta)],
+                  [ -np.sin(alpha1-theta), 0,  np.cos(alpha1-theta), ls1s2*np.sin(alpha1-theta-np.pi/2)*np.cos(theta)],
                   [ 0,              0,  0,             1]])
 
 ''' From s2 to n: @ n'''
-hs2n = np.array([[ 1,              0,  np.sin(theta),  0],
-                 [ 0,              np.cos(theta),  0,  y + lsn*np.sin(alpha2)],
-                 [ -np.sin(theta), 0,  np.cos(theta),  -lsn*np.cos(alpha2)],
+hs2n = np.array([[ 1,              0,  np.sin(alpha2-theta),  0],
+                 [ 0,              np.cos(alpha2-theta),  0,  y + lsn*np.sin(alpha2)],
+                 [ -np.sin(alpha2-theta), 0,  np.cos(alpha2-theta),  -lsn*np.cos(alpha2)],
                  [ 0,              0,  0,              1]])
 
 p_i = np.array([[0], [0], [0], [1]])
