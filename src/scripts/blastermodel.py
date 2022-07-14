@@ -13,14 +13,37 @@ import time
 
 class blasterModel: 
 
-    def __init__(self, mass, J, l_x, l_y, N): 
+    def __init__(self, mass, J, l_x, l_y, N, c, thrustRange, Q, R, Q_t, blastThruster, statesBound, controlBound): 
+
+        """
+        
+            Types:
+
+                N: int 
+                mass, l_x, l_y, c, blastThruster: double, 
+                J: numpy 3x3 matrix.
+                Q, Q_t: numpy 16x16 matrix.
+                R: numpy 6x6 matrix.
+                statesBound: 16x2 matrix. statesBound[0] -> lower bounds, statesBound[1] -> upper bounds.
+                controlBound: 6x2 matrix. controlBound[0] -> lower bounds, controlBound[1] -> upper bounds.
+
+        
+        """
 
         self._M = mass
         self._J = J
         self._arm_length_x = l_x
         self._arm_length_y = l_y
-        self._c = 0.002
+        self._c = c
         self._N = N
+        self._minThrust = thrustRange[0]
+        self._maxThrust = thrustRange[1]
+        self._Q_weight = Q  # Weight Matrix for states
+        self._Q_weight_t = Q_t # Weight Matrix for terminal states
+        self._R_weight = R  # Weight Matrix for control
+        self._blastThruster = blastThruster
+        self._statesBound = statesBound
+        self._controlBound = controlBound
 
     def generateModel(self):
 
@@ -33,6 +56,9 @@ class blasterModel:
             alpha -> motor 1 angle
             beta -> motor 2 angle 
             T_blast -> thruster due to blasting.
+            Total number of states -> 16. p -> 3, q -> 4, v -> 3, omega -> 3, poc -> 3.
+            Total number of controlled variables -> 6, 4 -> thrust motors, 2 swivel motors.
+            Need to convert motor thrusts to rates + collective thrust.
 
         """ 
 
@@ -106,7 +132,8 @@ class blasterModel:
 
             self._Jac_p,
             self._Jac_eta,
-            self._Jac_angles
+            self._Jac_angles,
+            self._T_blast
 
         )
 
@@ -130,16 +157,20 @@ class blasterModel:
         ocp.cost.cost_type_e = 'LINEAR_LS'
 
         """ 
+        
+            Define weightage here.
 
-            TODO: 
-                1. Fix weights. 
-                2. Find out where yref is for.
-                3. Set constraints
-
+            Q -> 16 x 16, R -> 6 x 6. Q and R are weightage matrices.
+            Vx -> 22 x 16. Vu -> 22 x 6. V is the selection matrix.
+            yref is just default reference points.
+        
+            Indices for states are in this order: p, q, v, omega, poc.
+            Indices for controls are in this order: T1, .., T4, alpha, beta.
+         
         """
 
-        ocp.cost.W = scipy.linalg.block_diag(self._Q_weight, self._Q_weight_, self._R_weight)
-        ocp.cost.W_e = scipy.linalg.block_diag(self._Q_weight_t, self._Q_weight_t_)
+        ocp.cost.W = scipy.linalg.block_diag(self._Q_weight, self._R_weight)
+        ocp.cost.W_e = scipy.linalg.block_diag(self._Q_weight_t)
 
         ocp.cost.Vx = np.zeros((ny, nx))
         ocp.cost.Vx[:nx, :nx] = np.eye(nx)
@@ -153,14 +184,18 @@ class blasterModel:
         ocp.cost.yref = np.zeros((ny, ))
         ocp.cost.yref_e = np.zeros(ny_e, )
 
-        ocp.constraints.idxbu = np.array([i for i in range(nu)])
-        ocp.constraints.lbu = np.array([-self._qdot_max for i in range(nu)])
-        ocp.constraints.ubu = np.array([self._qdot_max for i in range(nu)])
+        # Setting the constraints here.
+
+        ocp.constraints.idxbu = np.array([i for i in range(nu)]) # Setting indices for motors and swivel angles.
+
+        ocp.constraints.lbu = self._controlBound[0] # Setting bounds for thrusts, then swivel angles.
+        ocp.constraints.ubu = self._controlBound[1]
+
         ocp.constraints.x0 = np.zeros(nx)
 
-        ocp.constraints.idxbx = np.array([i+self._n_states for i in range(nx - self._n_states)])
-        ocp.constraints.lbx = np.array([0 for i in range(nx - self._n_states)])
-        ocp.constraints.ubx = np.array([self._q_max for i in range(nx - self._n_states)])
+        ocp.constraints.idxbx = np.array([i for i in range(nx)])
+        ocp.constraints.lbx = self._statesBound[0]
+        ocp.constraints.ubx = self._statesBound[1]
 
         ocp.solver_options.levenberg_marquardt = 0.0
         # ocp.solver_options.regularize_method = 'CONVEXIFY'
