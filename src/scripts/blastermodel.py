@@ -67,7 +67,9 @@ class blasterModel:
         # Related to drone pose.
 
         self._p = SX.sym('p', 3)
-        self._eta = SX.sym('eta', 4)
+        self._phi = SX.sym('phi', 1)
+        self._theta = SX.sym('theta', 1)
+        self._psi = SX.sym('psi', 1)
         self._omega = SX.sym('omega', 3)
         self._v = SX.sym('v', 3)
         self._poc = SX.sym('poc', 3)
@@ -77,7 +79,7 @@ class blasterModel:
         self._alpha_dot = SX.sym('alpha', 1)
         self._beta_dot = SX.sym('beta', 1)
         self._Jac_p = SX.sym('J_p', 3, 3)
-        self._Jac_eta = SX.sym('J_eta', 3, 4)
+        self._Jac_euler = SX.sym('J_eta', 3, 3)
         self._Jac_angles = SX.sym('J_angle', 3, 2)
 
         # Related to external forces acting on drone.
@@ -94,18 +96,52 @@ class blasterModel:
 
         )
 
+        R_phi = SX.eye(3)
+        R_theta = SX.eye(3)
+        R_psi = SX.eye(3)
+
+        R_phi[1, 1] = cos(self._phi)
+        R_phi[1, 2] = -sin(self._phi)
+        R_phi[2, 1] = sin(self._phi)
+        R_phi[2, 2] = cos(self._phi)
+
+        R_theta[0, 0] = cos(self._theta)
+        R_theta[0, 2] = sin(self._theta)
+        R_theta[2, 0] = -sin(self._theta)
+        R_theta[2, 2] = cos(self._theta)
+
+        R_psi[0, 0] = cos(self._psi)
+        R_psi[0, 1] = -sin(self._psi)
+        R_psi[1, 0] = sin(self._psi)
+        R_psi[1, 1] = cos(self._psi)
+
+        self._R = R_psi @ R_theta @ R_phi 
+
         self._p_dot = self._v
-        self._eta_dot = MathUtils.quatMultiplication(self._eta, vertcat(0, self._omega/2))
-        self._v_dot = 1/self._M * MathUtils.quat2Rot(self._eta) @ vertcat(0, 0, (self._T[0] + self._T[1] + self._T[2] + self._T[3] + self._T_blast)) + self._gravity
+        self._phi_dot = 0
+        self._theta_dot = 0
+        self._psi_dot = 0 
+        R_to_omega = SX.zeros(3, 3)
+        R_to_omega[0, 0] = -sin(self._theta)
+        R_to_omega[0, 2] = 1
+        R_to_omega[1, 0] = sin(self._phi)*cos(self._theta)
+        R_to_omega[1, 1] = cos(self._phi)
+        R_to_omega[2, 0] = cos(self._phi)*cos(self._theta)
+        R_to_omega[2, 1] = -sin(self._phi)
+
+        self._euler_angles_dot = inv(R_to_omega)@self._omega
+        self._v_dot = 1/self._M * self._R @ vertcat(0, 0, (self._T[0] + self._T[1] + self._T[2] + self._T[3] + self._T_blast)) + self._gravity
         self._omega_dot = inv(self._J) @ (self._Moments - cross(self._omega, self._J @ self._omega))
-        self._poc_dot = self._Jac_p @ self._v + self._Jac_eta @ self._eta_dot + self._Jac_angles @ vertcat(self._alpha_dot, self._beta_dot)
+        self._poc_dot = self._Jac_p @ self._v + self._Jac_euler @ self._euler_angles_dot + self._Jac_angles @ vertcat(self._alpha_dot, self._beta_dot)
 
         self._model = AcadosModel()
         self._model.name = self._model_name
         self._model.x = vertcat(
 
             self._p,
-            self._eta,
+            self._phi,
+            self._theta,
+            self._psi,
             self._v,
             self._omega,
             self._poc
@@ -121,7 +157,7 @@ class blasterModel:
         self._model.f_expl_expr = vertcat(
             
             self._p_dot,
-            self._eta_dot,
+            self._euler_angles_dot,
             self._v_dot,
             self._omega_dot,
             self._poc_dot
@@ -215,5 +251,5 @@ class blasterModel:
 
 if __name__ == "__main__": 
 
-    b = blasterModel(7.5, np.eye(3), 0.25, 0.25, 100)
+    b = blasterModel(7.5, np.eye(3), 0.25, 0.25, 30, 0, [0, 5], 0, 0, 0, 0, 0, 0)
     b.generateModel()
