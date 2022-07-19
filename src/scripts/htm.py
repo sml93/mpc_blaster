@@ -57,6 +57,7 @@ print(p_s2M)
 
 # p_n = np.dot(hs2n, p_i)
 p_nM = (hob @ hbs1 @ hs1s2 @ hs2n) @ p_i
+print(hob @ hbs1 @ hs1s2 @ hs2n)
 print(p_nM)
 
 xcoord = [p_s1M[0][0], p_s2M[0][0], p_nM[0][0]]
@@ -77,3 +78,7 @@ ax.set_xlim([1.1, 1.3])
 ax.set_ylim([1.0, 1.05])
 ax.set_zlim([-0.10, 0])
 plt.show()
+
+def compute_T_b_s2():
+
+    pass 
