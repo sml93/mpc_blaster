@@ -13,7 +13,7 @@ import time
 
 class blasterModel: 
 
-    def __init__(self, mass, J, l_x, l_y, N, c, thrustRange, Q, R, Q_t, blastThruster, statesBound, controlBound): 
+    def __init__(self, mass, J, l_x, l_y, N, Tf, c, Q, R, Q_t, blastThruster, statesBound, controlBound): 
 
         """
         
@@ -36,8 +36,7 @@ class blasterModel:
         self._arm_length_y = l_y
         self._c = c
         self._N = N
-        self._minThrust = thrustRange[0]
-        self._maxThrust = thrustRange[1]
+        self._Tf = Tf
         self._Q_weight = Q  # Weight Matrix for states
         self._Q_weight_t = Q_t # Weight Matrix for terminal states
         self._R_weight = R  # Weight Matrix for control
@@ -50,15 +49,17 @@ class blasterModel:
         """
 
             p -> position
-            eta -> quaternions 
+            eul -> euler angles 
             omega -> angular velocity
             v -> linear velocity
             alpha -> motor 1 angle
             beta -> motor 2 angle 
             T_blast -> thruster due to blasting.
-            Total number of states -> 16. p -> 3, q -> 4, v -> 3, omega -> 3, poc -> 3.
-            Total number of controlled variables -> 6, 4 -> thrust motors, 2 swivel motors.
+            Total number of states -> 17. p -> 3, eul -> 3, v -> 3, omega -> 3, swivel angles -> 2, poc -> 3.
+            Total number of controlled variables -> 6, 4 -> thrust motors, 2 swivel angle rates.
             Need to convert motor thrusts to rates + collective thrust.
+            
+            NOTE: Model is currently using ENU.
 
         """ 
 
@@ -71,6 +72,8 @@ class blasterModel:
         self._theta = SX.sym('theta', 1)
         self._psi = SX.sym('psi', 1)
         self._omega = SX.sym('omega', 3)
+        self._alpha = SX.sym('alpha', 1)
+        self._beta = SX.sym('beta', 1)
         self._v = SX.sym('v', 3)
         self._poc = SX.sym('poc', 3)
 
@@ -90,8 +93,8 @@ class blasterModel:
 
         self._Moments = vertcat(
 
-            (- self._T[0] - self._T[3] + self._T[1] + self._T[2]) * self._arm_length_y, 
-            (self._T[1] + self._T[3] - self._T[0] - self._T[2]) * self._arm_length_x, 
+            (self._T[1] + self._T[3] - self._T[0] - self._T[2]) * self._arm_length_y,
+            (- self._T[0] - self._T[3] + self._T[1] + self._T[2]) * self._arm_length_x,  
             (- self._T[0] - self._T[1] + self._T[2] + self._T[3]) * self._c
 
         )
@@ -133,6 +136,8 @@ class blasterModel:
         self._v_dot = 1/self._M * self._R @ vertcat(0, 0, (self._T[0] + self._T[1] + self._T[2] + self._T[3] + self._T_blast)) + self._gravity
         self._omega_dot = inv(self._J) @ (self._Moments - cross(self._omega, self._J @ self._omega))
         self._poc_dot = self._Jac_p @ self._v + self._Jac_euler @ self._euler_angles_dot + self._Jac_angles @ vertcat(self._alpha_dot, self._beta_dot)
+        self._alpha_dot_ = self._alpha_dot
+        self._beta_dot_ = self._beta_dot
 
         self._model = AcadosModel()
         self._model.name = self._model_name
@@ -144,6 +149,8 @@ class blasterModel:
             self._psi,
             self._v,
             self._omega,
+            self._alpha,
+            self._beta, 
             self._poc
 
         )
@@ -160,15 +167,17 @@ class blasterModel:
             self._euler_angles_dot,
             self._v_dot,
             self._omega_dot,
+            self._alpha_dot_,
+            self._beta_dot_,
             self._poc_dot
         
         )
         self._model.z = [] 
         self._model.p = vertcat(
 
-            self._Jac_p,
-            self._Jac_eta,
-            self._Jac_angles,
+            reshape(self._Jac_p, self._Jac_p.rows()*self._Jac_p.columns(), 1),
+            reshape(self._Jac_euler, self._Jac_euler.rows()*self._Jac_euler.columns(), 1),
+            reshape(self._Jac_angles, self._Jac_angles.rows()*self._Jac_angles.columns(), 1),
             self._T_blast
 
         )
@@ -201,7 +210,7 @@ class blasterModel:
             yref is just default reference points.
         
             Indices for states are in this order: p, q, v, omega, poc.
-            Indices for controls are in this order: T1, .., T4, alpha, beta.
+            Indices for controls are in this order: T1, .., T4, alpha_dot, beta_dot.
          
         """
 
@@ -241,15 +250,38 @@ class blasterModel:
         ocp.solver_options.integrator_type = 'ERK'
         ocp.solver_options.nlp_solver_type = 'SQP_RTI'  # SQP_RTI
         ocp.solver_options.nlp_solver_max_iter = 200
-        ocp.parameter_values = np.zeros(self._n_states*self._n_tendons)
+        ocp.parameter_values = np.zeros((self._Jac_p.rows()*self._Jac_p.columns() + self._Jac_euler.rows()*self._Jac_euler.columns() + self._Jac_angles.rows()*self._Jac_angles.columns() + 1, 1))
         # ocp.solver_options.qp_solver_cond_N = self._N
 
         # set prediction horizon
         ocp.solver_options.tf = self._Tf
 
-        return 0
+        acados_ocp_solver = AcadosOcpSolver(ocp, json_file = 'acados_ocp_' + self._model.name + '.json')
+        acados_integrator = AcadosSimSolver(ocp, json_file = 'acados_ocp_' + self._model.name + '.json')
+
+        return acados_integrator, acados_ocp_solver
 
 if __name__ == "__main__": 
 
-    b = blasterModel(7.5, np.eye(3), 0.25, 0.25, 30, 0, [0, 5], 0, 0, 0, 0, 0, 0)
+    mass = 10
+    J = np.eye(3)
+    J[0, 0] = 0.50781
+    J[1, 1] = 0.47314
+    J[2, 2] = 0.72975
+    l_x = 0.3434 
+    l_y = 0.3475
+    N = 30
+    Tf = 1.0
+    yaw_coefficient = 0.03
+    blastThruster = 2.2
+    Q = np.zeros((17, 17))
+    np.fill_diagonal(Q, [10e2, 10e2, 10e2, 1e2, 1e2, 1e-1, 5e1, 5e1, 5e1, 1e1, 1e1, 1e1, 1e-2, 1e-2, 10e2, 10e2, 10e2])
+    Q_t = 10*Q
+    R = np.zeros((6, 6))
+    np.fill_diagonal(R, [3e1, 3e1, 3e1, 3e1, 1e1, 1e1])
+    statesBound = np.array([[-1.5, -1.5, 0, -0.174532925, -0.174532925, -0.349066, -0.5, -0.5, -0.5, -0.0872665, -0.0872665, -0.0872665, -0.174532925, -0.523599, -1.5, -1.5, -2.5],
+                            [1.5, 1.5, 2.5, 0.174532925, 0.174532925, 0.349066, 0.5, 0.5, 0.5, 0.0872665, 0.0872665, 0.0872665, 1.22173, 0.523599, 1.5, 1.5, 2.5]])
+    controlBound = np.array([[0, 0, 0, 0, -0.0872665, -0.0872665], [6.5, 6.5, 6.5, 6.5, 0.0872665, 0.0872665]])
+    b = blasterModel(mass, J, l_x, l_y, N, Tf, yaw_coefficient, Q, R, Q_t, blastThruster, statesBound, controlBound)
     b.generateModel()
+    b.generateController()
