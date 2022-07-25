@@ -3,8 +3,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-alpha1 = -np.deg2rad(30)      # pitch of M1
-alpha2 = np.deg2rad(13)      # roll of M2
+alpha1 = -np.deg2rad(10)      # pitch of M1
+alpha2 = np.deg2rad(10)       # roll of M2
 theta = np.deg2rad(0)
 
 ybs = np.deg2rad(0)
@@ -25,22 +25,22 @@ hob = np.array([[np.cos(psi_ob), np.sin(psi_ob), 0, lob*np.cos(gamma_ob)*np.cos(
                 [0,              0,              0, 1]])
 
 ''' From b to s: @ s1 '''
-hbs1 = np.array([[np.cos(alpha1-theta),   0, np.sin(alpha1-theta), lbs*np.cos(ybs)*np.cos(theta)],
-                 [ 0,              1, 0,             y],
-                 [ -np.sin(alpha1-theta), 0, np.cos(alpha1-theta), lbs*np.sin(ybs)*np.cos(theta)],
-                 [ 0,              0, 0,             1]])
+hbs1 = np.array([[ 1,   0,   0,    lbs*np.sin(ybs)],
+                 [ 0,   1,   0,    y              ],
+                 [ 0,   0,   1,    lbs*np.cos(ybs)],
+                 [ 0,   0,   0,    1              ]])
 
 ''' From s1 to s2: @ s2'''
-hs1s2 = np.array([[np.cos(alpha1-theta),   0,  np.sin(alpha1-theta), ls1s2*np.cos(alpha1-theta+np.pi/2)*np.cos(theta)],
-                  [ 0,              1,  0,             y ],
-                  [ -np.sin(alpha1-theta), 0,  np.cos(alpha1-theta), ls1s2*np.sin(alpha1-theta-np.pi/2)*np.cos(theta)],
-                  [ 0,              0,  0,             1]])
+hs1s2 = np.array([[ np.cos(alpha1),  0,  np.sin(alpha1), ls1s2*np.cos(alpha1)],
+                  [ 0,               1,  0,              y                   ],
+                  [ -np.sin(alpha1), 0,  np.cos(alpha1), -ls1s2*np.sin(alpha1)],
+                  [ 0,               0,  0,              1                   ]])
 
 ''' From s2 to n: @ n'''
-hs2n = np.array([[ 1,              0,  np.sin(alpha2-theta),  0],
-                 [ 0,              np.cos(alpha2-theta),  0,  y + lsn*np.sin(alpha2)],
-                 [ -np.sin(alpha2-theta), 0,  np.cos(alpha2-theta),  -lsn*np.cos(alpha2)],
-                 [ 0,              0,  0,              1]])
+hs2n = np.array([[ 1,    0,               0,               -ls1s2                ],
+                 [ 0,    np.cos(alpha2),  np.sin(alpha2),  y + lsn*np.sin(alpha2)],
+                 [ 0,    np.sin(alpha2),  np.cos(alpha2),  -lsn*np.cos(alpha2)   ],
+                 [ 0,    0,               0,               1                     ]])
 
 p_i = np.array([[0], [0], [0], [1]])
 
@@ -57,7 +57,7 @@ print(p_s2M)
 
 # p_n = np.dot(hs2n, p_i)
 p_nM = (hob @ hbs1 @ hs1s2 @ hs2n) @ p_i
-print(hob @ hbs1 @ hs1s2 @ hs2n)
+print(hbs1 @ hs1s2 @ hs2n)
 print(p_nM)
 
 xcoord = [p_s1M[0][0], p_s2M[0][0], p_nM[0][0]]
@@ -74,9 +74,9 @@ ax.plot3D(xcoord, ycoord, zcoord)
 ax.set_xlabel('X')
 ax.set_ylabel('Y')
 ax.set_zlabel('Z')
-ax.set_xlim([1.1, 1.3])
-ax.set_ylim([1.0, 1.05])
-ax.set_zlim([-0.10, 0])
+# ax.set_xlim([1.0, 1.1])
+# ax.set_ylim([1.0, 1.05])
+# ax.set_zlim([0.16, 0.26])
 plt.show()
 
 def compute_T_b_s2():
