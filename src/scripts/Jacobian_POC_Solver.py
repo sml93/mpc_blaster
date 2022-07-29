@@ -83,6 +83,8 @@ class Jacobian_POC_Solver:
         sim.solver_options.integrator_type = 'ERK'
         sim.solver_options.num_stages = 4
         sim.solver_options.num_steps = 10
+        sim.solver_options.sens_forw = True
+        sim.solver_options.sens_adj = True
 
         # Create integrator. 
 
