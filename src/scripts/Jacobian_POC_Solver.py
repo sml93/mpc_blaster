@@ -10,6 +10,7 @@ import numpy as np
 import scipy
 from scipy import linalg
 import time
+from htm import compute_T_b_s2, computer_T_w_b
 
 from matplotlib import pyplot as plt
 
@@ -34,17 +35,10 @@ class Jacobian_POC_Solver:
         
         """ 
 
-        self._streamVelocity = streamVelocity
+        self._streamVelocity = np.array([0, 0, streamVelocity])
         self._M_c = M_c
         self._Ts = Ts
         self._initConditions = np.zeros(6)
-
-    def _getMag(self, vel, ang):
-        angle = np.deg2rad(ang)
-        anglex = vel*np.sin(angle)
-        angley = 0
-        anglez = -vel*np.cos(angle)
-        return anglex, angley, anglez
 
     def _createIntegrator(self): 
 
@@ -83,8 +77,9 @@ class Jacobian_POC_Solver:
         sim.solver_options.integrator_type = 'ERK'
         sim.solver_options.num_stages = 4
         sim.solver_options.num_steps = 10
-        sim.solver_options.sens_forw = True
-        sim.solver_options.sens_adj = True
+        sim.solver_options.sens_forw = False
+        # sim.solver_options.sens_hess = True
+        # sim.solver_options.sens_adj = True
 
         # Create integrator. 
 
@@ -213,17 +208,25 @@ class Jacobian_POC_Solver:
 
         return self._solveForwardIntegration(self._initConditions, T_N)[2]
 
-    def _solveFiniteDifferences(): 
+    def _solveFiniteDifferences(self): 
 
         pass
+
+    def computeInitCondition(self, euler_angles, motor_angles, position): 
+
+        T = computer_T_w_b(euler_angles[0], euler_angles[1], euler_angles[2], position) @ compute_T_b_s2(motor_angles[0], motor_angles[1])[0:3, 0:3]
+        p = T[0:3, 3]
+        R = T[0:3, 0:3]
+        self.setInitConditions(p, R@self._streamVelocity)
+        
+        
+
 
 
 if __name__ == "__main__":
 
     solver = Jacobian_POC_Solver(20, 1.0, 0.00015)
     solver._createIntegrator()
-    mag = solver._getMag(152, 20)
-    initConditions = np.array([0.5, 2.0, 4.0, mag[0], mag[1], mag[2]])
     solver.setInitConditions(initConditions)
     t0 = time.time()
     sol = solver._solveRootFindingProblem(0.001, solver._function)

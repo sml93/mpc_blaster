@@ -52,8 +52,8 @@ class blasterModel:
             eul -> euler angles 
             omega -> angular velocity
             v -> linear velocity
-            alpha -> motor 1 angle
-            beta -> motor 2 angle 
+            alpha1 -> motor 1 angle
+            alpha2 -> motor 2 angle 
             T_blast -> thruster due to blasting.
             Total number of states -> 17. p -> 3, eul -> 3, v -> 3, omega -> 3, swivel angles -> 2, poc -> 3.
             Total number of controlled variables -> 6, 4 -> thrust motors, 2 swivel angle rates.
@@ -72,15 +72,15 @@ class blasterModel:
         self._theta = SX.sym('theta', 1)
         self._psi = SX.sym('psi', 1)
         self._omega = SX.sym('omega', 3)
-        self._alpha = SX.sym('alpha', 1)
-        self._beta = SX.sym('beta', 1)
+        self._alpha1 = SX.sym('alpha1', 1)
+        self._alpha2 = SX.sym('alpha2', 1)
         self._v = SX.sym('v', 3)
         self._poc = SX.sym('poc', 3)
 
         # Related to motor angles. 
 
-        self._alpha_dot = SX.sym('alpha', 1)
-        self._beta_dot = SX.sym('beta', 1)
+        self._alpha1_dot = SX.sym('alpha1', 1)
+        self._alpha2_dot = SX.sym('alpha2', 1)
         self._Jac_p = SX.sym('J_p', 3, 3)
         self._Jac_euler = SX.sym('J_eta', 3, 3)
         self._Jac_angles = SX.sym('J_angle', 3, 2)
@@ -133,12 +133,28 @@ class blasterModel:
         R_to_omega[2, 0] = cos(self._phi)*cos(self._theta)
         R_to_omega[2, 1] = -sin(self._phi)
 
+        R_gimbal_1 = SX.eye(3)
+        R_gimbal_2 = SX.eye(3)
+
+        R_gimbal_1[1, 1] = cos(self._alpha1)
+        R_gimbal_1[1, 2] = -sin(self._alpha1)
+        R_gimbal_1[2, 1] = sin(self._alpha1)
+        R_gimbal_1[2, 2] = cos(self._alpha1)
+
+        R_gimbal_2[0, 0] = cos(self._alpha2)
+        R_gimbal_2[0, 2] = sin(self._alpha2)
+        R_gimbal_2[2, 0] = -sin(self._alpha2)
+        R_gimbal_2[2, 2] = cos(self._alpha2)
+
+        self._R_gimbal = R_gimbal_1 @ R_gimbal_2 # body to nozzle rotation.
+
+
         self._euler_angles_dot = inv(R_to_omega)@self._omega
-        self._v_dot = 1/self._M * self._R @ vertcat(0, 0, (self._T[0] + self._T[1] + self._T[2] + self._T[3] + self._T_blast)) + self._gravity
+        self._v_dot = 1/self._M * self._R @ vertcat(0, 0, (self._T[0] + self._T[1] + self._T[2] + self._T[3])) + self._R @ self._R_gimbal @ vertcat(0, 0, self._blastThruster) + self._gravity
         self._omega_dot = inv(self._J) @ (self._Moments - cross(self._omega, self._J @ self._omega))
-        self._poc_dot = self._Jac_p @ self._v + self._Jac_euler @ self._euler_angles_dot + self._Jac_angles @ vertcat(self._alpha_dot, self._beta_dot)
-        self._alpha_dot_ = self._alpha_dot
-        self._beta_dot_ = self._beta_dot
+        self._poc_dot = self._Jac_p @ self._v + self._Jac_euler @ self._euler_angles_dot + self._Jac_angles @ vertcat(self._alpha1_dot, self._alpha2_dot)
+        self._alpha1_dot_ = self._alpha1_dot
+        self._alpha2_dot_ = self._alpha2_dot
 
         self._model = AcadosModel()
         self._model.name = self._model_name
@@ -150,16 +166,16 @@ class blasterModel:
             self._psi,
             self._v,
             self._omega,
-            self._alpha,
-            self._beta, 
+            self._alpha1,
+            self._alpha2, 
             self._poc
 
         )
         self._model.u = vertcat(
 
             self._T,
-            self._alpha_dot,
-            self._beta_dot
+            self._alpha1_dot,
+            self._alpha2_dot
 
         )
         self._model.f_expl_expr = vertcat(
@@ -168,8 +184,8 @@ class blasterModel:
             self._euler_angles_dot,
             self._v_dot,
             self._omega_dot,
-            self._alpha_dot_,
-            self._beta_dot_,
+            self._alpha1_dot_,
+            self._alpha2_dot_,
             self._poc_dot
         
         )
@@ -211,7 +227,7 @@ class blasterModel:
             yref is just default reference points.
         
             Indices for states are in this order: p, q, v, omega, poc.
-            Indices for controls are in this order: T1, .., T4, alpha_dot, beta_dot.
+            Indices for controls are in this order: T1, .., T4, alpha1_dot, alpha2_dot.
          
         """
 
