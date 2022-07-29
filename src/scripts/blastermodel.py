@@ -84,6 +84,7 @@ class blasterModel:
         self._Jac_p = SX.sym('J_p', 3, 3)
         self._Jac_euler = SX.sym('J_eta', 3, 3)
         self._Jac_angles = SX.sym('J_angle', 3, 2)
+        self._params = SX.sym('p', 25)
 
         # Related to external forces acting on drone.
 
@@ -250,7 +251,7 @@ class blasterModel:
         ocp.solver_options.integrator_type = 'ERK'
         ocp.solver_options.nlp_solver_type = 'SQP_RTI'  # SQP_RTI
         ocp.solver_options.nlp_solver_max_iter = 200
-        ocp.parameter_values = np.zeros((self._Jac_p.rows()*self._Jac_p.columns() + self._Jac_euler.rows()*self._Jac_euler.columns() + self._Jac_angles.rows()*self._Jac_angles.columns() + 1, 1))
+        ocp.parameter_values = np.zeros((self._Jac_p.rows()*self._Jac_p.columns() + self._Jac_euler.rows()*self._Jac_euler.columns() + self._Jac_angles.rows()*self._Jac_angles.columns() + 1))
         # ocp.solver_options.qp_solver_cond_N = self._N
 
         # set prediction horizon
@@ -275,7 +276,7 @@ if __name__ == "__main__":
     yaw_coefficient = 0.03
     blastThruster = 2.2
     Q = np.zeros((17, 17))
-    np.fill_diagonal(Q, [10e2, 10e2, 10e2, 1e2, 1e2, 1e-1, 5e1, 5e1, 5e1, 1e1, 1e1, 1e1, 1e-2, 1e-2, 10e2, 10e2, 10e2])
+    np.fill_diagonal(Q, [10e2, 10e2, 10e2, 1e2, 1e2, 1e-1, 5e1, 5e1, 5e1, 1e1, 1e1, 1e1, 1e-2, 1e-2, 10e2, 10e2, 10e2]) # position, euler, velocity, angular velocity, swivel angles, POC.
     Q_t = 10*Q
     R = np.zeros((6, 6))
     np.fill_diagonal(R, [3e1, 3e1, 3e1, 3e1, 1e1, 1e1])
