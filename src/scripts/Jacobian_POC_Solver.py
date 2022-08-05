@@ -125,7 +125,7 @@ class Jacobian_POC_Solver:
 
             T_Nplus1 = self._rootFindingStep(T_N, function, initConditions)
             if T_Nplus1 < 0:
-                T_Nplus1 = 0
+                T_Nplus1 = -T_Nplus1
             error = function(T_Nplus1, initConditions)
             T_N = T_Nplus1
             steps_taken += 1
@@ -137,7 +137,7 @@ class Jacobian_POC_Solver:
         # Just to solve 1 step.
 
         f = function(T_N, initConditions)
-        delta_T_N = 1e-1
+        delta_T_N = 1e-5
         T_N_plus = T_N + delta_T_N
         f_prime = (function(T_N_plus, initConditions) - f) / delta_T_N
 
@@ -237,23 +237,36 @@ class Jacobian_POC_Solver:
         self.integrator.solve()
         self._POC = self.integrator.get('x')[0:3]
 
+        
+
         for i in range(3):
 
-            euler_angles[i] += self._eps
+            eps = np.zeros(3)
+            eps[i] = self._eps
+            euler_angles = euler_angles + eps
             initConditions = self.setInitConditions_Plus(
                 euler_angles, motor_angles, position)
             self.integrator.set('x', initConditions)
+
+            t0 = time.time()
+
             self._Ts = self._solveRootFindingProblem(0.1, self._function, initConditions)
             self.integrator.set('T', self._Ts)
             self.integrator.solve()
             POC_plus = self.integrator.get('x')[0:3]
             J_i = self._solveFiniteDifferences(POC_plus, self._POC)
-            self._J_eul[:, i] = J_i
-            euler_angles = self._euler_angles
 
+            print("Time Elapsed 2: ", time.time() - t0)
+
+            self._J_eul[:, i] = J_i
+            euler_angles[0:3] = self._euler_angles[0:3]
+
+            
         for i in range(2):
 
-            motor_angles[i] += self._eps
+            eps = np.zeros(2)
+            eps[i] = self._eps
+            motor_angles = motor_angles + eps
             initConditions = self.setInitConditions_Plus(
                 euler_angles, motor_angles, position)
             self.integrator.set('x', initConditions)
@@ -267,7 +280,9 @@ class Jacobian_POC_Solver:
 
         for i in range(3):
 
-            position[i] += self._eps
+            eps = np.zeros(3)
+            eps[i] = self._eps
+            position += eps
             initConditions = self.setInitConditions_Plus(
                 euler_angles, motor_angles, position)
             self.integrator.set('x', initConditions)
@@ -288,9 +303,9 @@ if __name__ == "__main__":
 
     solver = Jacobian_POC_Solver(20, 1.0, 0.00015)
     solver._createIntegrator()
-    solver.setInitConditions([0, 0, 0], [0, 0], [0, 0, 4])
+    solver.setInitConditions([0, 0, 0], [2, 0], [0, 0, 4])
     t0 = time.time()
-    solver.solveJacobians([0, 0, 0], [10, 0], [0, 0, 4])
+    solver.solveJacobians([0, 0, 0], [0, 0], [0, 0, 4])
     print("Time Elapsed: ", time.time() - t0)
     sol = solver._solveRootFindingProblem(0.001, solver._function, solver._initConditions)
     
