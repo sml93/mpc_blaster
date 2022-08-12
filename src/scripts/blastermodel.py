@@ -126,12 +126,19 @@ class blasterModel:
         self._theta_dot = 0
         self._psi_dot = 0 
         R_to_omega = SX.zeros(3, 3)
-        R_to_omega[0, 0] = -sin(self._theta)
-        R_to_omega[0, 2] = 1
-        R_to_omega[1, 0] = sin(self._phi)*cos(self._theta)
+        # R_to_omega[0, 0] = -sin(self._theta)
+        # R_to_omega[0, 2] = 1
+        # R_to_omega[1, 0] = sin(self._phi)*cos(self._theta)
+        # R_to_omega[1, 1] = cos(self._phi)
+        # R_to_omega[2, 0] = cos(self._phi)*cos(self._theta)
+        # R_to_omega[2, 1] = -sin(self._phi)
+        R_to_omega[0, 0] = 1
+        R_to_omega[0, 2] = -sin(self._theta)
         R_to_omega[1, 1] = cos(self._phi)
-        R_to_omega[2, 0] = cos(self._phi)*cos(self._theta)
+        R_to_omega[1, 2] = sin(self._phi)*cos(self._theta)
         R_to_omega[2, 1] = -sin(self._phi)
+        R_to_omega[2, 2] = cos(self._phi)*cos(self._theta)
+  
 
         R_gimbal_1 = SX.eye(3)
         R_gimbal_2 = SX.eye(3)
@@ -302,3 +309,4 @@ if __name__ == "__main__":
     b = blasterModel(mass, J, l_x, l_y, N, Tf, yaw_coefficient, Q, R, Q_t, blastThruster, statesBound, controlBound)
     b.generateModel()
     b.generateController()
+    print(b._R)
