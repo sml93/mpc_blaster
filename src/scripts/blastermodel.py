@@ -273,9 +273,9 @@ class blasterModel:
         ocp.solver_options.hessian_approx = 'GAUSS_NEWTON'
         ocp.solver_options.integrator_type = 'ERK'
         ocp.solver_options.nlp_solver_type = 'SQP_RTI'  # SQP_RTI
-        # ocp.solver_options.nlp_solver_max_iter = 500
+        ocp.solver_options.qp_solver_iter_max = 500
         ocp.parameter_values = np.zeros((self._Jac_p.rows()*self._Jac_p.columns() + self._Jac_euler.rows()*self._Jac_euler.columns() + self._Jac_angles.rows()*self._Jac_angles.columns() + 1))
-        # ocp.solver_options.qp_solver_cond_N = self._N
+        ocp.solver_options.qp_solver_cond_N = self._N
 
         # set prediction horizon
         ocp.solver_options.tf = self._Tf
