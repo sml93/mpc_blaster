@@ -199,9 +199,9 @@ class blasterModel:
         self._model.z = [] 
         self._model.p = vertcat(
 
-            reshape(self._Jac_p, self._Jac_p.rows()*self._Jac_p.columns(), 1),
-            reshape(self._Jac_euler, self._Jac_euler.rows()*self._Jac_euler.columns(), 1),
             reshape(self._Jac_angles, self._Jac_angles.rows()*self._Jac_angles.columns(), 1),
+            reshape(self._Jac_euler, self._Jac_euler.rows()*self._Jac_euler.columns(), 1),
+            reshape(self._Jac_p, self._Jac_p.rows()*self._Jac_p.columns(), 1),
             self._T_blast
 
         )

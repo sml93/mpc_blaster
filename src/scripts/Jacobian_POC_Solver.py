@@ -35,7 +35,7 @@ class Jacobian_POC_Solver:
         """
 
         self._eps = 1e-6
-        self._streamVelocity = np.array([0, 0, streamVelocity])
+        self._streamVelocity = np.array([0, 0, -streamVelocity])
         self._M_c = M_c
         self._Ts = Ts
         self._initConditions = np.zeros(6)
@@ -49,6 +49,12 @@ class Jacobian_POC_Solver:
         self._J_pos = np.zeros((3, 3))
         self._J_eul = np.zeros((3, 3))
         self._J_mot = np.zeros((3, 2))
+
+    def initialise(self): 
+
+        self._createIntegrator()
+        self.setInitConditions([0, 0, 0], [0, 0], [0, 0, 2])
+        self.solveJacobians([0, 0, 0], [0, 0], [0, 0, 4])
 
     def _createIntegrator(self):
 
@@ -172,7 +178,7 @@ class Jacobian_POC_Solver:
 
         # This is the main Jacobians getter function.
 
-        pass
+        return self._J_mot, self._J_eul, self._J_pos
 
     def getInitConditions(self):
 
@@ -204,7 +210,7 @@ class Jacobian_POC_Solver:
         print(T)
 
         self.integrator.set('x', self._initConditions)
-        self.integrator.set('T', 0.2421937)
+        self.integrator.set('T', self._Ts)
         # Integrate
         self.integrator.solve()
         sol = self.integrator.get('x')
@@ -247,16 +253,11 @@ class Jacobian_POC_Solver:
             initConditions = self.setInitConditions_Plus(
                 euler_angles, motor_angles, position)
             self.integrator.set('x', initConditions)
-
-            t0 = time.time()
-
             self._Ts = self._solveRootFindingProblem(0.1, self._function, initConditions)
             self.integrator.set('T', self._Ts)
             self.integrator.solve()
             POC_plus = self.integrator.get('x')[0:3]
             J_i = self._solveFiniteDifferences(POC_plus, self._POC)
-
-            print("Time Elapsed 2: ", time.time() - t0)
 
             self._J_eul[:, i] = J_i
             euler_angles[0:3] = self._euler_angles[0:3]
@@ -301,9 +302,8 @@ class Jacobian_POC_Solver:
 
 if __name__ == "__main__":
 
-    solver = Jacobian_POC_Solver(20, 1.0, 0.00015)
-    solver._createIntegrator()
-    solver.setInitConditions([0, 0, 0], [2, 0], [0, 0, 4])
+    solver = Jacobian_POC_Solver(150, 1.0, 0.00015)
+    solver.initialise()
     t0 = time.time()
     solver.solveJacobians([0, 0, 0], [0, 0], [0, 0, 4])
     print("Time Elapsed: ", time.time() - t0)

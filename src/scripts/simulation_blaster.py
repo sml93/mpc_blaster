@@ -3,6 +3,7 @@ from Jacobian_POC_Solver import Jacobian_POC_Solver
 import numpy as np
 import time
 from matplotlib import pyplot as plt
+from casadi import *
 
 if __name__ == "__main__":
 
@@ -15,8 +16,8 @@ if __name__ == "__main__":
     J[2, 2] = 0.72975
     l_x = 0.3434 
     l_y = 0.3475
-    N = 30
-    Tf = 1.0
+    N = 60
+    Tf = 2.0
     yaw_coefficient = 0.03
     blastThruster = 2.2
     Q = np.zeros((17, 17))
@@ -24,8 +25,8 @@ if __name__ == "__main__":
     Q_t = 10*Q
     R = np.zeros((6, 6))
     np.fill_diagonal(R, [5e-2, 5e-2, 5e-2, 5e-2, 1e1, 1e1])
-    statesBound = np.array([[-1.5, -1.5, 0, -0.174532925, -0.174532925, -0.349066, -0.5, -0.5, -0.5, -0.0872665, -0.0872665, -0.0872665, -0.174532925, -0.523599, -1.5, -1.5, -2.5],
-                            [1.5, 1.5, 5.0, 0.174532925, 0.174532925, 0.349066, 0.5, 0.5, 0.5, 0.0872665, 0.0872665, 0.0872665, 1.22173, 0.523599, 1.5, 1.5, 2.5]])
+    statesBound = np.array([[-1.5, -1.5, 0, -0.174532925, -0.174532925, -0.349066, -1.0, -1.0, -1.0, -0.0872665, -0.0872665, -0.0872665, -0.174532925, -0.523599, -1.5, -1.5, -2.5],
+                            [1.5, 1.5, 5.0, 0.174532925, 0.174532925, 0.349066, 1.0, 1.0, 1.0, 0.0872665, 0.0872665, 0.0872665, 1.22173, 0.523599, 1.5, 1.5, 2.5]])
     controlBound = np.array([[0, 0, 0, 0, -0.0872665, -0.0872665], [65, 65, 65, 65, 0.0872665, 0.0872665]])
     b = blasterModel(mass, J, l_x, l_y, N, Tf, yaw_coefficient, Q, R, Q_t, blastThruster, statesBound, controlBound)
     b.generateModel()
@@ -33,6 +34,10 @@ if __name__ == "__main__":
 
     # GENERATE SIMULATION PARAMETERS
 
+    solver = Jacobian_POC_Solver(150, 1, 0.000015)
+    solver.initialise()
+    J_mot, J_eul, J_pos = solver.getJacobians()
+    
     nx = 17 
     nu = 6
     Nsim = 500
@@ -40,7 +45,7 @@ if __name__ == "__main__":
     simU = np.ndarray((Nsim, nu))
 
     x0 = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-    yref = np.array([0.0, 0.0, 3.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    yref = np.array([0.6, 0.0, 3.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.8, 0, 0])
     t = np.linspace(0, Tf/N*Nsim, Nsim+1)
     simX[0, :] = x0
 
@@ -54,17 +59,24 @@ if __name__ == "__main__":
         ocp_solver.set(0, "ubx", xcurrent)
 
         ocp_solver.cost_set(0, 'yref', yref)
-
+        
         for k in range(N):
             
+            params = np.vstack((np.reshape(J_mot, (J_mot.size, 1), order='F'), np.reshape(J_eul, (J_eul.size, 1), order='F'), np.reshape(J_pos, (J_pos.size, 1), order='F'), blastThruster))
+
+            ocp_solver.set(k, 'p', params)
+            
+
             if k+1 == N: 
 
-                status = ocp_solver.cost_set(k+1, 'yref', yref[0:nx])
+                ocp_solver.cost_set(k+1, 'yref', yref[0:nx])
 
             else: 
-                status = ocp_solver.cost_set(k+1, 'yref', yref)
+
+                ocp_solver.cost_set(k+1, 'yref', yref)
 
         status = ocp_solver.solve()
+        integrator.set('p', params)
         print(xcurrent)
         print(ocp_solver.get_cost())
         print(ocp_solver.get(0, "u"))
@@ -88,6 +100,17 @@ if __name__ == "__main__":
 
         print(f"Time per step: {time.time() - t0}")
 
-    plt.plot(t, simX[:, 6:9])
+    plt.plot(t, simX[:, 0], label='x')
+    plt.plot(t, simX[:, 1], label='y')
+    plt.plot(t, simX[:, 2], label='z')
+    plt.plot(t, simX[:, 14], label='POC_{x}')
+    plt.plot(t, simX[:, 15], label='POC_{y}')
+    plt.plot(t, simX[:, 16], label='POC_{z}')
+    plt.legend()
     # plt.plot(t[0:Nsim], simU[:, 0:4])
+    plt.show()
+
+    plt.plot(t, simX[:, 12], label='alpha1')
+    plt.plot(t, simX[:, 13], label='alpha2')
+    plt.legend()
     plt.show()
