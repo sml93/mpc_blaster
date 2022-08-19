@@ -125,8 +125,12 @@ def talker():
     # # plt.plot(t[0:Nsim], simU[:, 0:4])
     # plt.show()
 
-  msg.orientation = Quaternion(*quaternion_from_euler(0,0,0))
-  msg.thrust = 0.69
+  msg.orientation.w = quaternion_from_euler(0,0,0)[0]
+  msg.orientation.x = quaternion_from_euler(0,0,0)[1]
+  msg.orientation.y = quaternion_from_euler(0,0,0)[2]
+  msg.orientation.z = quaternion_from_euler(0,0,0)[3]
+  msg.thrust = 0.705
+  pub.publish(msg)
 
 
 if __name__ == '__main__':
