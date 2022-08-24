@@ -19,12 +19,12 @@ if __name__ == "__main__":
     N = 60
     Tf = 2.0
     yaw_coefficient = 0.03
-    blastThruster = 2.2
+    blastThruster = 2.2*9.81
     Q = np.zeros((17, 17))
-    np.fill_diagonal(Q, [1e2, 1e2, 1e2, 1e2, 1e2, 1e2, 0.5e1, 0.5e1, 0.5e1, 1e1, 1e1, 1e1, 1e-2, 1e-2, 0.01e2, 0.01e2, 0.01e2]) # position, euler, velocity, angular velocity, swivel angles, POC.
+    np.fill_diagonal(Q, [1e2, 1e2, 1e2, 1e2, 1e2, 1e2, 0.5e1, 0.5e1, 0.5e1, 1e1, 1e1, 1e1, 1e-2, 1e-2, 1e1, 1e1, 1e1]) # position, euler, velocity, angular velocity, swivel angles, POC.
     Q_t = 10*Q
     R = np.zeros((6, 6))
-    np.fill_diagonal(R, [5e-2, 5e-2, 5e-2, 5e-2, 1e1, 1e1])
+    np.fill_diagonal(R, [5e-2, 5e-2, 5e-2, 5e-2, 1e-5, 1e-5])
     statesBound = np.array([[-1.5, -1.5, 0, -0.174532925, -0.174532925, -0.349066, -1.0, -1.0, -1.0, -0.0872665, -0.0872665, -0.0872665, -0.174532925, -0.523599, -1.5, -1.5, -2.5],
                             [1.5, 1.5, 5.0, 0.174532925, 0.174532925, 0.349066, 1.0, 1.0, 1.0, 0.0872665, 0.0872665, 0.0872665, 1.22173, 0.523599, 1.5, 1.5, 2.5]])
     controlBound = np.array([[0, 0, 0, 0, -0.0872665, -0.0872665], [65, 65, 65, 65, 0.0872665, 0.0872665]])
@@ -45,11 +45,13 @@ if __name__ == "__main__":
     simU = np.ndarray((Nsim, nu))
 
     x0 = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-    yref = np.array([0.6, 0.0, 3.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.8, 0, 0])
+    yref = np.array([0.6, 0.0, 3.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.8, 0.0, 0, 0, 0, 0, 0.0, 0, 0])
     t = np.linspace(0, Tf/N*Nsim, Nsim+1)
     simX[0, :] = x0
 
     xcurrent = x0 
+    
+    # u = np.array([17, 17, 17, 17, 0.0, -0.05])
 
     for i in range(Nsim): 
 
@@ -88,6 +90,7 @@ if __name__ == "__main__":
         # simulate system
         integrator.set("x", xcurrent)
         integrator.set("u", simU[i,:])
+        # integrator.set("u", u)
         # integrator.set("u", np.array([22.0725, 22.0725, 22.0725, 22.0725, 0, 0]))
 
         status = integrator.solve()
@@ -103,11 +106,18 @@ if __name__ == "__main__":
     plt.plot(t, simX[:, 0], label='x')
     plt.plot(t, simX[:, 1], label='y')
     plt.plot(t, simX[:, 2], label='z')
+    plt.legend()
+    plt.show()
     plt.plot(t, simX[:, 14], label='POC_{x}')
     plt.plot(t, simX[:, 15], label='POC_{y}')
     plt.plot(t, simX[:, 16], label='POC_{z}')
     plt.legend()
-    # plt.plot(t[0:Nsim], simU[:, 0:4])
+    plt.show()
+
+    plt.plot(t, simX[:, 3], label='phi')
+    plt.plot(t, simX[:, 4], label='tetha')
+    plt.plot(t, simX[:, 5], label='psi')
+    plt.legend()
     plt.show()
 
     plt.plot(t, simX[:, 12], label='alpha1')

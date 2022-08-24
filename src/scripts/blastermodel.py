@@ -143,21 +143,25 @@ class blasterModel:
         R_gimbal_1 = SX.eye(3)
         R_gimbal_2 = SX.eye(3)
 
-        R_gimbal_1[1, 1] = cos(self._alpha1)
-        R_gimbal_1[1, 2] = -sin(self._alpha1)
-        R_gimbal_1[2, 1] = sin(self._alpha1)
-        R_gimbal_1[2, 2] = cos(self._alpha1)
+        # Rotation about x. 
 
-        R_gimbal_2[0, 0] = cos(self._alpha2)
-        R_gimbal_2[0, 2] = sin(self._alpha2)
-        R_gimbal_2[2, 0] = -sin(self._alpha2)
+        R_gimbal_2[1, 1] = cos(self._alpha2)
+        R_gimbal_2[1, 2] = -sin(self._alpha2)
+        R_gimbal_2[2, 1] = sin(self._alpha2)
         R_gimbal_2[2, 2] = cos(self._alpha2)
+
+        # Rotation about y.
+
+        R_gimbal_1[0, 0] = cos(self._alpha1)
+        R_gimbal_1[0, 2] = sin(self._alpha1)
+        R_gimbal_1[2, 0] = -sin(self._alpha1)
+        R_gimbal_1[2, 2] = cos(self._alpha1)
 
         self._R_gimbal = R_gimbal_1 @ R_gimbal_2 # body to nozzle rotation.
 
 
         self._euler_angles_dot = inv(R_to_omega)@self._omega
-        self._v_dot = (1/self._M) * (self._R @ vertcat(0, 0, (self._T[0] + self._T[1] + self._T[2] + self._T[3]))) + self._gravity
+        self._v_dot = (1/self._M) * (self._R @ vertcat(0, 0, (self._T[0] + self._T[1] + self._T[2] + self._T[3])) + self._R @ self._R_gimbal @ vertcat(0, 0, self._blastThruster)) + self._gravity
         self._omega_dot = inv(self._J) @ (self._Moments - cross(self._omega, self._J @ self._omega))
         self._poc_dot = self._Jac_p @ self._v + self._Jac_euler @ self._euler_angles_dot + self._Jac_angles @ vertcat(self._alpha1_dot, self._alpha2_dot)
         self._alpha1_dot_ = self._alpha1_dot
