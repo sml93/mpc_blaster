@@ -21,7 +21,7 @@ if __name__ == "__main__":
     yaw_coefficient = 0.03
     blastThruster = 2.2*9.81
     Q = np.zeros((17, 17))
-    np.fill_diagonal(Q, [1e2, 1e2, 1e2, 1e2, 1e2, 1e2, 0.5e1, 0.5e1, 0.5e1, 1e1, 1e1, 1e1, 1e-2, 1e-2, 1e1, 1e1, 1e1]) # position, euler, velocity, angular velocity, swivel angles, POC.
+    np.fill_diagonal(Q, [1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 0.5e1, 0.5e1, 0.5e1, 1e1, 1e1, 1e1, 1e-2, 1e-2, 1e3, 1e3, 1e3]) # position, euler, velocity, angular velocity, swivel angles, POC.
     Q_t = 10*Q
     R = np.zeros((6, 6))
     np.fill_diagonal(R, [5e-2, 5e-2, 5e-2, 5e-2, 1e-5, 1e-5])
@@ -45,7 +45,7 @@ if __name__ == "__main__":
     simU = np.ndarray((Nsim, nu))
 
     x0 = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-    yref = np.array([0.6, 0.0, 3.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.8, 0.0, 0, 0, 0, 0, 0.0, 0, 0])
+    yref = np.array([0.0, 0.0, 3.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.2, 0.0, 0, 0, 0, 0, 0.0, 0, 0])
     t = np.linspace(0, Tf/N*Nsim, Nsim+1)
     simX[0, :] = x0
 
@@ -78,6 +78,9 @@ if __name__ == "__main__":
                 ocp_solver.cost_set(k+1, 'yref', yref)
 
         status = ocp_solver.solve()
+
+        params = np.vstack((np.reshape(J_mot, (J_mot.size, 1), order='F'), np.reshape(J_eul, (J_eul.size, 1), order='F'), np.reshape(J_pos, (J_pos.size, 1), order='F'), 2.2*9.81))
+
         integrator.set('p', params)
         print(xcurrent)
         print(ocp_solver.get_cost())
