@@ -46,9 +46,11 @@ class mpc_blaster():
 
   def talker(self):
     pub = rospy.Publisher('desired_atti', AttitudeTarget, queue_size=10)
+    pub1 = rospy.Publisher('p_e', Point, queue_size=10)
     rospy.init_node('mavros_blaster', anonymous=True)
     r = rospy.Rate(10)
     msg = AttitudeTarget()
+    msg1 = Point()
 
     # Drone parameters
     N = 60
@@ -123,6 +125,11 @@ class mpc_blaster():
         msg.thrust = self.thrusterCumul(t1,t2,t3,t4)
         # print(thrusterCumul(t1,t2,t3,t4))
         pub.publish(msg)
+
+        msg1.x = simX[i, 14]
+        msg1.y = simX[i, 15]
+        msg1.y = simX[i, 16]
+        pub1.publish(msg1)
 
         simU[i,:] = ocp_solver.get(0, "u")
 

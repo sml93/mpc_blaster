@@ -30,5 +30,6 @@ class sensing:
     R_gimbal = R_gimbal_1 @ R_gimbal_2 # body to nozzle rotation.
     return R_gimbal
 
-  def rot_e(self):
+  def getPe(self, ):
+    ## Subscribe to p_e topic
     pass
