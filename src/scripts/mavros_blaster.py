@@ -167,6 +167,7 @@ class mpc_blaster():
     plt.plot(t, simX[:, 2], label='z')
     plt.legend()
     plt.show()
+
     plt.plot(t, simX[:, 14], label='POC_{x}')
     plt.plot(t, simX[:, 15], label='POC_{y}')
     plt.plot(t, simX[:, 16], label='POC_{z}')
