@@ -33,7 +33,6 @@ def getPosition(standoff):
   pe_ranger = mu * pe_hat
   pe_ranger = np.round(pe_ranger, 4)
   return pe_ranger
-  # pass
 
 def talker():
   pub = rospy.Publisher('standoff', Float32, queue_size=10)
