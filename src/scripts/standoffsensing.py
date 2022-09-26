@@ -1,4 +1,6 @@
+#! /usr/bin/env python3
 import sys
+import csv
 
 import rospy
 import numpy as np
@@ -12,6 +14,7 @@ from rosPathGen import pathgen
 # alph1 = 0
 # alph2 = 0
 # force = 1.5
+arr = []
 
 class sensing:
   def __init__(self, force):
@@ -85,8 +88,7 @@ class sensing:
     print ("mu: " + str(np.round(self.mu, 4)) + "\n")
 
   def fixedMu(self):
-    self.getmu = np.linspace(0.5, 1.5, 3)
-
+    self.getmu = np.linspace(0.5, 2.5, 5)
 
   
   def getPeRef(self):
@@ -114,6 +116,19 @@ class sensing:
     a, b, c, d, e, f, z = run.genPath()
     # z = np.linspace(0, 0, 190)
 
+    # arr = np.transpose(np.array(([a,b,z])))
+    e = np.array(e)
+    f = np.array(f)
+    print(a.shape)
+
+    file = open('lemn.csv', 'w')
+    writer = csv.writer(file)
+    # for i in range(len(a)):
+    #   writer.writerow(arr[i])
+    # f.close()
+
+
+
     while not rospy.is_shutdown(): 
       self.fixedMu()
       fig = plt.figure()
@@ -128,20 +143,30 @@ class sensing:
         pe_ref.z = np.round(self.p_ez * self.mu, 4)
         # print("pe_ref:\n" + str(pe_ref) + "\n")
         pe_pub.publish(pe_ref)
-        self.p_ex_plt = np.round(a * self.mu, 4)
-        self.p_ey_plt = np.round(b * self.mu, 4)
-        self.p_ez_plt = np.round(z * self.mu, 4)
-        # print(self.p_ex_plt, self.p_ey_plt, self.p_ez_plt)
+        # self.p_ex_circ = np.round(a * self.mu, 4)
+        # self.p_ey_circ = np.round(b * self.mu, 4)
+        # self.p_ez_circ = np.round(z * self.mu, 4)
+        # arr = np.transpose(np.array(([self.p_ex_circ, self.p_ey_circ, self.p_ez_circ])))
+        # ax.scatter3D(self.p_ex_circ, self.p_ey_circ, self.p_ez_circ)
+        # ax.plot(self.p_ex_plt, self.p_ey_plt)
 
-        ax.scatter3D(self.p_ex_plt, self.p_ey_plt, self.p_ez_plt)
+        self.p_ex_lemn = np.round(e * self.mu, 4)
+        self.p_ey_lemn = np.round(f * self.mu, 4)
+        self.p_ez_lemn = np.round(z * self.mu, 4)
+        arr = np.transpose(np.array(([self.p_ex_lemn, self.p_ey_lemn, self.p_ez_lemn])))
+        ax.scatter3D(self.p_ex_lemn, self.p_ey_lemn, self.p_ez_lemn)
+        
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
         ax.set_zlabel('Z')
         ax.invert_zaxis()
-        # ax.plot(self.p_ex_plt, self.p_ey_plt)
+        print(arr)
 
+        for i in range(len(e)):
+          writer.writerow(arr[i])
+      file.close()
       plt.show()
-      plt.close()
+      # plt.close()
 
 
 def main(args):

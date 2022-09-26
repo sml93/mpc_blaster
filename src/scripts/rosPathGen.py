@@ -40,21 +40,22 @@ class pathgen():
     r = rospy.Rate(10)
     msg = Point()
 
-    z = np.linspace(0, 5, 10)
+    # z = np.linspace(5, 5, 10)
+    z = np.linspace(5, 5, 180)    # for plotting without 0
 
     a, b = self.circle()
     c, d = self.square()
     e,f = self.lemniscale()
 
-    for i in range(len(z)):
-      a = np.insert(a, 0, 0)
-      b = np.insert(b, 0, 0)
-      e = np.insert(e, 0, 0)
-      f = np.insert(f, 0, 0)
+    # for i in range(len(z)):
+    #   a = np.insert(a, 0, 0)
+    #   b = np.insert(b, 0, 0)
+    #   e = np.insert(e, 0, 0)
+    #   f = np.insert(f, 0, 0)
 
-    z_1 = np.linspace(5, 5, 180)
-    z = np.concatenate([z, z_1])
-    ht = np.linspace(5, 5, 190)
+    # z_1 = np.linspace(5, 5, 180)
+    # z = np.concatenate([z, z_1])
+    # ht = np.linspace(5, 5, 190)
 
     # run = 1
     
@@ -85,22 +86,22 @@ class pathgen():
 
 
       """ Plotting 3D """
-      fig = plt.figure()
-      ax = fig.gca(projection='3d')
-      ax.plot3D(a, b, z, c='k')
+      # fig = plt.figure()
+      # ax = fig.gca(projection='3d')
+      # ax.plot3D(a, b, z, c='k')
 
-      ax.set_xlabel('X')
-      ax.set_ylabel('Y')
-      ax.set_zlabel('Z')
+      # ax.set_xlabel('X')
+      # ax.set_ylabel('Y')
+      # ax.set_zlabel('Z')
 
-      ax2 = fig.gca(projection='3d')
-      ax2.plot3D(e, f, ht, c='r')
-      ax2.set_xlabel('X')
-      ax2.set_ylabel('Y')
-      ax2.set_zlabel('Z')
+      # ax2 = fig.gca(projection='3d')
+      # ax2.plot3D(e, f, ht, c='r')
+      # ax2.set_xlabel('X')
+      # ax2.set_ylabel('Y')
+      # ax2.set_zlabel('Z')
 
       # plt.show()
-      plt.close()
+      # plt.close()
       return a, b, c, d, e, f, z
 
 
