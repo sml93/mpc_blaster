@@ -5,7 +5,7 @@ import numpy as np
 
 from matplotlib import pyplot as plt
 from blastermodel import blasterModel
-from geometry_msgs.msg import Quaternion
+from geometry_msgs.msg import Quaternion, Point
 from mavros_msgs.msg import AttitudeTarget
 from Jacobian_POC_Solver import Jacobian_POC_Solver
 # from tf.transformations import quaternion_from_euler
@@ -21,19 +21,24 @@ l_x = 0.3434
 l_y = 0.3475
 yaw_coefficient = 0.03
 blastThruster = 2.2*9.81
-thrusterCoefficient = 2.3
+thrusterCoefficient = 3.7
 
 
 def thrusterCumul(t1,t2,t3,t4):
   avg = thrusterCoefficient*np.mean([t1,t2,t3,t4])/9.81
   T_sp = (0.0014*np.power(avg,3)) - (0.0263*np.power(avg,2)) + (0.2464*avg) -0.0286
+  if (T_sp > 1.0):
+    T_sp == 1
+  print('Thrust: ', T_sp)
   return T_sp
 
 def talker():
   pub = rospy.Publisher('desired_atti', AttitudeTarget, queue_size=10)
+  pub1 = rospy.Publisher('p_e', Point, queue_size=10)
   rospy.init_node('mavros_blaster', anonymous=True)
   r = rospy.Rate(10)
   msg = AttitudeTarget()
+  msg1 = Point()
 
   # Drone parameters
   N = 60
