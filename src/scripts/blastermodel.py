@@ -94,9 +94,9 @@ class blasterModel:
 
         self._Moments = vertcat(
 
-            (self._T[1] + self._T[3] - self._T[0] - self._T[2]) * self._arm_length_y,
-            (- self._T[0] - self._T[3] + self._T[1] + self._T[2]) * self._arm_length_x,  
-            (- self._T[0] - self._T[1] + self._T[2] + self._T[3]) * self._c
+            (self._T[1] + self._T[2] - self._T[0] - self._T[3]) * self._arm_length_y,
+            (- self._T[0] - self._T[2] + self._T[1] + self._T[3]) * self._arm_length_x,  
+            (- self._T[0] - self._T[1] + self._T[3] + self._T[2]) * self._c
 
         )
 

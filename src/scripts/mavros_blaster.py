@@ -128,7 +128,7 @@ class mpc_blaster():
 
         msg1.x = simX[i, 14]
         msg1.y = simX[i, 15]
-        msg1.y = simX[i, 16]
+        msg1.z = simX[i, 16]
         pub1.publish(msg1)
 
         simU[i,:] = ocp_solver.get(0, "u")
