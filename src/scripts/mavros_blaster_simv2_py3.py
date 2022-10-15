@@ -28,15 +28,16 @@ class Quadcopter_Controller:
     self.initialise_publishers()
     self.initialise_subscribers()
     self.main_loop()
-    rospy.spin()
+    # rospy.spin()
 
   def initialise_parameters(self, quad_params):
+    
     self.nx = 17 
-    self.nu = 6 
+    self.nu = 6
     self.attitude_target_msg = AttitudeTarget()
 
     self.quadcopter_states = np.zeros(17)
-    self.yref = np.array([0.0, 0.0, 2.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.2, 0.0, 0, 0, 0, 0, 0.0, 0, 0])
+    self.yref = quad_params['yref']
     self.mass = quad_params['mass']
     self.J = quad_params['J']
     self.l_x = quad_params['l_x']
@@ -71,7 +72,7 @@ class Quadcopter_Controller:
     R = np.zeros((6, 6))
     np.fill_diagonal(R, [5e-2, 5e-2, 5e-2, 5e-2, 1e-5, 1e-5])
     statesBound = np.array([[-12.5, -12.5, 0, -0.174532925, -0.174532925, -0.349066, -1.0, -1.0, -1.0, -0.0872665, -0.0872665, -0.0872665, -0.174532925, -0.523599, -12.5, -12.5, 0.0],
-                            [12.5, 12.5, 10.0, 0.174532925, 0.174532925, 0.349066, 1.0, 1.0, 1.0, 0.0872665, 0.0872665, 0.0872665, 1.22173, 0.523599, 12.5, 12.5, 10.0]])
+                            [12.5, 12.5, 10.0, 0.174532925, 0.174532925, 0.349066, 1.0, 1.0, 2.0, 0.0872665, 0.0872665, 0.0872665, 1.22173, 0.523599, 12.5, 12.5, 10.0]])
     controlBound = np.array([[0, 0, 0, 0, -0.0872665, -0.0872665], [65, 65, 65, 65, 0.0872665, 0.0872665]])
     b = blasterModel(self.mass, self.J, self.l_x, self.l_y, self.N, Tf, self.yaw_coefficient, Q, R, Q_t, self.blastThruster, statesBound, controlBound)
     b.generateModel()
@@ -134,12 +135,6 @@ class Quadcopter_Controller:
     
     self.feedforward_attitude_publisher.publish(self.attitude_target_msg)
 
-    # self.integrator.set("x", self.quadcopter_states)
-
-    # self.integrator.solve()
-
-    # self.quadcopter_states = self.integrator.get("x")
-
   def main_loop(self): 
     while not rospy.is_shutdown(): 
       self.update_solver()
@@ -153,10 +148,11 @@ if __name__=="__main__":
   J[2, 2] = 0.72975
   l_x = 0.3434 
   l_y = 0.3475
+  yref = np.array([0.0, 0.0, 2.5,   0, 0, 0,    0, 0, 0,    0, 0, 0,    0, 0, 0.0,    0, 0, 0,    0, 0,     0, 0, 0])
   yaw_coefficient = 0.03
   blastThruster = 0
-  thrusterCoefficient = 1
-  quad_params = {"mass": mass,"J": J, "l_x": l_x, "l_y": l_y, "N": 60, "yaw_coefficient": yaw_coefficient, "blastThruster": thrusterCoefficient}
+  thrusterCoefficient = 2.0
+  quad_params = {"yref": yref, "mass": mass,"J": J, "l_x": l_x, "l_y": l_y, "N": 60, "yaw_coefficient": yaw_coefficient, "blastThruster": thrusterCoefficient}
   run = Quadcopter_Controller(quad_params)
 
     
