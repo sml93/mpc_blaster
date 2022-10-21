@@ -94,8 +94,8 @@ class blasterModel:
 
         self._Moments = vertcat(
 
-            (self._T[1] + self._T[3] - self._T[0] - self._T[2]) * self._arm_length_y,
-            (- self._T[0] - self._T[3] + self._T[1] + self._T[2]) * self._arm_length_x,  
+            (self._T[1] + self._T[2] - self._T[0] - self._T[3]) * self._arm_length_y,
+            (- self._T[0] - self._T[2] + self._T[1] + self._T[3]) * self._arm_length_x,  
             (- self._T[0] - self._T[1] + self._T[2] + self._T[3]) * self._c
 
         )
@@ -172,13 +172,9 @@ class blasterModel:
             self._euler_angles_dot,
             self._v_dot,
             self._omega_dot
-
         
         )
-        self._model.z = [] 
-
-
-        return 0
+        self._model.z = []
 
     def generateController(self): 
 
@@ -190,6 +186,7 @@ class blasterModel:
         nx = ocp.model.x.size()[0]
         nu = ocp.model.u.size()[0]
         ny = nx + nu 
+        print(nx, ny, nu)
         ny_e = nx 
 
         ocp.dims.N = self._N
@@ -199,10 +196,7 @@ class blasterModel:
 
         """ 
         
-            Define weightage here.
-
-            Q -> 16 x 16, R -> 6 x 6. Q and R are weightage matrices.
-            Vx -> 22 x 16. Vu -> 22 x 6. V is the selection matrix.
+            Define weightage here./home/sml/catkin_ws/src/mpc_blaster/src/scripts/
             yref is just default reference points.
         
             Indices for states are in this order: p, q, v, omega, poc.
@@ -260,28 +254,29 @@ class blasterModel:
 
         return acados_integrator, acados_ocp_solver
 
-if __name__ == "__main__": 
+# if __name__ == "__main__": 
 
-    mass = 10
-    J = np.eye(3)
-    J[0, 0] = 0.50781
-    J[1, 1] = 0.47314
-    J[2, 2] = 0.72975
-    l_x = 0.3434 
-    l_y = 0.3475
-    N = 30
-    Tf = 1.0
-    yaw_coefficient = 0.03
-    blastThruster = 2.2
-    Q = np.zeros((12, 12))
-    np.fill_diagonal(Q, [10e2, 10e2, 10e2, 1e2, 1e2, 1e-1, 5e1, 5e1, 5e1, 1e1, 1e1, 1e1]) # position, euler, velocity, angular velocity, swivel angles, POC.
-    Q_t = 10*Q
-    R = np.zeros((4, 4))
-    np.fill_diagonal(R, [3e1, 3e1, 3e1, 3e1])
-    statesBound = np.array([[-1.5, -1.5, 0, -0.174532925, -0.174532925, -0.349066, -0.5, -0.5, -0.5, -0.0872665, -0.0872665, -0.0872665],
-                            [1.5, 1.5, 2.5, 0.174532925, 0.174532925, 0.349066, 0.5, 0.5, 0.5, 0.0872665, 0.0872665, 0.0872665]])
-    controlBound = np.array([[0, 0, 0, 0], [6.5, 6.5, 6.5, 6.5]])
-    b = blasterModel(mass, J, l_x, l_y, N, Tf, yaw_coefficient, Q, R, Q_t, blastThruster, statesBound, controlBound)
-    b.generateModel()
-    b.generateController()
-    print(b._R)
+#     mass = 10
+#     J = np.eye(3)
+#     J[0, 0] = 0.50781
+#     J[1, 1] = 0.47314
+#     J[2, 2] = 0.72975
+#     # l_x = 0.3434
+#     l_x = 0.3475 
+#     l_y = 0.3475
+#     N = 30
+#     Tf = 1.0
+#     yaw_coefficient = 0.03
+#     blastThruster = 0.0
+#     Q = np.zeros((12, 12))
+#     np.fill_diagonal(Q, [10e2, 10e2, 10e2, 1e2, 1e2, 1e-1, 5e1, 5e1, 5e1, 1e1, 1e1, 1e1]) # position, euler, velocity, angular velocity, swivel angles, POC.
+#     Q_t = 10*Q
+#     R = np.zeros((4, 4))
+#     np.fill_diagonal(R, [3e1, 3e1, 3e1, 3e1])
+#     statesBound = np.array([[-1.5, -1.5, 0, -0.174532925, -0.174532925, -0.349066, -0.5, -0.5, -0.5, -0.0872665, -0.0872665, -0.0872665],
+#                             [1.5, 1.5, 2.5, 0.174532925, 0.174532925, 0.349066, 0.5, 0.5, 0.5, 0.0872665, 0.0872665, 0.0872665]])
+#     controlBound = np.array([[0, 0, 0, 0], [6.5, 6.5, 6.5, 6.5]])
+#     b = blasterModel(mass, J, l_x, l_y, N, Tf, yaw_coefficient, Q, R, Q_t, blastThruster, statesBound, controlBound)
+#     b.generateModel()
+#     b.generateController()
+#     print(b._R)
