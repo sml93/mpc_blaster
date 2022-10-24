@@ -5,7 +5,7 @@ from sympy import euler
 import rospy
 import numpy as np
 
-from mavros import setpoint as SP
+from mavros import setpoint as sp
 from nav_msgs.msg import Odometry
 from matplotlib import pyplot as plt
 from blastermodel_without_Jacobians import blasterModel
@@ -34,7 +34,7 @@ class blasterController:
     avg = thrusterCoefficient*np.mean([t1,t2,t3,t4])/9.81
     T_sp = (0.0014*np.power(avg,3)) - (0.0263*np.power(avg,2)) + (0.2464*avg) -0.0286
     if (T_sp >= 0.9):
-      T_sp = 0.8
+      T_sp = 0.82
     print('Thrust: ', round(T_sp,3))
     return T_sp
 
@@ -58,7 +58,7 @@ class blasterController:
     self.odom_sub = rospy.Subscriber('/mavros/local_position/odom', Odometry, self.callback)
     # self.swivel_angles_subscriber = rospy.Subscriber('/swivel_angles', Float64MultiArray, self.swivel_angles)
     self.attitude_target_msg = AttitudeTarget(
-      header = SP.Header(
+      header = sp.Header(
         frame_id="base_footprint",
         stamp=rospy.Time.now()),
       )
@@ -88,7 +88,7 @@ class blasterController:
     self.blaster_states[1] = round(msg.pose.pose.position.y, 3)
     self.blaster_states[2] = round(msg.pose.pose.position.z, 3)
 
-    euler_angles = quaternion_to_euler([msg.pose.pose.orientation.w, msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z])
+    euler_angles = quaternion_to_euler([msg.pose.pose.orientation.w, msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z], 'szyx')
 
     self.blaster_states[3] = round(euler_angles[0], 3)
     self.blaster_states[4] = round(euler_angles[1], 3)
@@ -117,21 +117,33 @@ class blasterController:
         self.ocp_solver.cost_set(k+1, 'yref', self.yref)
 
     self.ocp_solver.solve()
+    print(self.ocp_solver.get(self.N-1, "x"))
     # params = np.vstack((np.reshape(self.J_mot, (self.J_mot.size, 1), order='F'), np.reshape(self.J_eul, (self.J_eul.size, 1), order='F'), np.reshape(self.J_pos, (self.J_pos.size, 1), order='F'), self.blastThruster))
     # # self.integrator.set('p', params)
     print(f"ocp_solver.get_cost(): {self.ocp_solver.get_cost()}")
     
     self.attitude_target_msg.type_mask = 7
-    target_quaternion = quaternion_from_euler(self.ocp_solver.get(0, "x")[3], self.ocp_solver.get(0, "x")[4], self.ocp_solver.get(0, "x")[5])
+    self.attitude_target_msg = AttitudeTarget(
+      header = sp.Header(
+        frame_id="base_footprint",
+        stamp=rospy.Time.now()),
+      )
+    target_quaternion = quaternion_from_euler(self.ocp_solver.get(0, "x")[3], self.ocp_solver.get(0, "x")[4], self.ocp_solver.get(0, "x")[5], 'szyx')
     self.attitude_target_msg.orientation.w = target_quaternion[0]
     self.attitude_target_msg.orientation.x = target_quaternion[1]
     self.attitude_target_msg.orientation.y = target_quaternion[2]
     self.attitude_target_msg.orientation.z = target_quaternion[3]
 
-    print('u0: ', round(self.ocp_solver.get(0, "u")[0],3))
-    print('u1: ', round(self.ocp_solver.get(0, "u")[1],3))
-    print('u2: ', round(self.ocp_solver.get(0, "u")[2],3))
-    print('u3: ', round(self.ocp_solver.get(0, "u")[3],3))
+
+    print("w: ", target_quaternion[0])
+    print("x: ", target_quaternion[1])
+    print("y: ", target_quaternion[2])
+    print("z: ", target_quaternion[3])
+
+    # print('u0: ', round(self.ocp_solver.get(0, "u")[0],3))
+    # print('u1: ', round(self.ocp_solver.get(0, "u")[1],3))
+    # print('u2: ', round(self.ocp_solver.get(0, "u")[2],3))
+    # print('u3: ', round(self.ocp_solver.get(0, "u")[3],3))
 
     self.attitude_target_msg.thrust = self.thrusterCumul(self.ocp_solver.get(0, "u")[0], self.ocp_solver.get(0, "u")[1], self.ocp_solver.get(0, "u")[2], self.ocp_solver.get(0, "u")[3])
     
@@ -159,13 +171,14 @@ if __name__ == '__main__':
   l_x = 0.3475 
   l_y = 0.3475
   yaw_coefficient = 0.03
+  # yaw_coefficient = 0.01
   # blastThruster = 2.2*9.81
   blastThruster = 0.0
   thrusterCoefficient = 3.7
 
   blaster_states = np.zeros((12))
-  yref = np.array([0.0, 0.0, 2.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.00, 0.0])  # pos, euler, linear vel, ang vel,  
-  blaster_params = {"yref": yref, "mass": mass,"J": J, "l_x": l_x, "l_y": l_y, "N": 100, "yaw_coefficient": yaw_coefficient, "blastThruster": thrusterCoefficient}
+  yref = np.array([1.0, 0.0, 3.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.00, 0.0])  # pos, euler, linear vel, ang vel,  
+  blaster_params = {"yref": yref, "mass": mass,"J": J, "l_x": l_x, "l_y": l_y, "N": 60, "yaw_coefficient": yaw_coefficient, "blastThruster": thrusterCoefficient}
   try: 
     blasterController(blaster_params)
     rospy.spin()
