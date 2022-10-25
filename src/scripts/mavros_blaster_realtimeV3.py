@@ -5,7 +5,7 @@ from sympy import euler
 import rospy
 import numpy as np
 
-from mavros import setpoint as sp
+from std_msgs.msg import Header
 from nav_msgs.msg import Odometry
 from matplotlib import pyplot as plt
 from blastermodel_without_Jacobians import blasterModel
@@ -34,7 +34,7 @@ class blasterController:
     avg = thrusterCoefficient*np.mean([t1,t2,t3,t4])/9.81
     T_sp = (0.0014*np.power(avg,3)) - (0.0263*np.power(avg,2)) + (0.2464*avg) -0.0286
     if (T_sp >= 0.9):
-      T_sp = 0.82
+      T_sp = 0.85
     print('Thrust: ', round(T_sp,3))
     return T_sp
 
@@ -57,11 +57,7 @@ class blasterController:
     # self.POC_pub = rospy.Publisher(/poc, Point, queue_size=1)
     self.odom_sub = rospy.Subscriber('/mavros/local_position/odom', Odometry, self.callback)
     # self.swivel_angles_subscriber = rospy.Subscriber('/swivel_angles', Float64MultiArray, self.swivel_angles)
-    self.attitude_target_msg = AttitudeTarget(
-      header = sp.Header(
-        frame_id="base_footprint",
-        stamp=rospy.Time.now()),
-      )
+    self.attitude_target_msg = AttitudeTarget()
 
   def init_MPC(self):
     # init drone params
@@ -73,6 +69,8 @@ class blasterController:
     np.fill_diagonal(R, [5e-2, 5e-2, 5e-2, 5e-2])
     statesBound = np.array([[-5, -5, -1.0, -0.174532925, -0.174532925, -0.349066, -1.0, -1.0, -0.5, -0.0872665, -0.0872665, -0.0872665],
                             [5, 5, 10, 0.174532925, 0.174532925, 0.349066, 1.0, 1.0, 0.5, 0.0872665, 0.0872665, 0.0872665]])
+    # statesBound = np.array([[-5, -5, -1.0, -0.174532925, -0.174532925, -0.349066, -3.0, -3.0, -0.5, -0.174532925, -0.174532925, -0.174532925],
+    #                         [5, 5, 10, 0.174532925, 0.174532925, 0.349066, 3.0, 3.0, 0.5, 0.174532925, 0.174532925, 0.174532925]])
     controlBound = np.array([[0, 0, 0, 0], [65, 65, 65, 65]])
     b = blasterModel(self.mass, self.J, self.l_x, self.l_y, self.N, Tf, self.yaw_coeff, Q, R, Q_t, self.blastThruster, statesBound, controlBound)
     b.generateModel()
@@ -84,23 +82,23 @@ class blasterController:
 
 
   def callback(self, msg):
-    self.blaster_states[0] = round(msg.pose.pose.position.x, 3)
-    self.blaster_states[1] = round(msg.pose.pose.position.y, 3)
-    self.blaster_states[2] = round(msg.pose.pose.position.z, 3)
+    self.blaster_states[0] = round(msg.pose.pose.position.x, 6)
+    self.blaster_states[1] = round(msg.pose.pose.position.y, 6)
+    self.blaster_states[2] = round(msg.pose.pose.position.z, 6)
 
     euler_angles = quaternion_to_euler([msg.pose.pose.orientation.w, msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z], 'szyx')
 
-    self.blaster_states[3] = round(euler_angles[0], 3)
-    self.blaster_states[4] = round(euler_angles[1], 3)
-    self.blaster_states[5] = round(euler_angles[2], 3)
+    self.blaster_states[3] = round(euler_angles[0], 6)    #x - roll
+    self.blaster_states[4] = round(euler_angles[1], 6)    #y - pitch
+    self.blaster_states[5] = round(euler_angles[2], 6)    #z - yaw
 
-    self.blaster_states[6] = round(msg.twist.twist.linear.x, 3)
-    self.blaster_states[7] = round(msg.twist.twist.linear.y, 3)
-    self.blaster_states[8] = round(msg.twist.twist.linear.z, 3)
+    self.blaster_states[6] = round(msg.twist.twist.linear.x, 6)
+    self.blaster_states[7] = round(msg.twist.twist.linear.y, 6)
+    self.blaster_states[8] = round(msg.twist.twist.linear.z, 6)
 
-    self.blaster_states[9] = round(msg.twist.twist.angular.x, 3)
-    self.blaster_states[10] = round(msg.twist.twist.angular.y, 3)
-    self.blaster_states[11] = round(msg.twist.twist.angular.z, 3)
+    self.blaster_states[9] = round(msg.twist.twist.angular.x, 6)
+    self.blaster_states[10] = round(msg.twist.twist.angular.y, 6)
+    self.blaster_states[11] = round(msg.twist.twist.angular.z, 6)
 
   def update_solver(self):
     self.ocp_solver.set(0, "lbx", self.blaster_states)
@@ -123,18 +121,17 @@ class blasterController:
     print(f"ocp_solver.get_cost(): {self.ocp_solver.get_cost()}")
     
     self.attitude_target_msg.type_mask = 7
-    self.attitude_target_msg = AttitudeTarget(
-      header = sp.Header(
-        frame_id="base_footprint",
-        stamp=rospy.Time.now()),
-      )
+    self.attitude_target_msg.header = Header()
+    self.attitude_target_msg.header.frame_id = "base_footprint"
+    self.attitude_target_msg.header.stamp = rospy.Time.now()
+    self.attitude_target_msg.type_mask = 7
     target_quaternion = quaternion_from_euler(self.ocp_solver.get(0, "x")[3], self.ocp_solver.get(0, "x")[4], self.ocp_solver.get(0, "x")[5], 'szyx')
     self.attitude_target_msg.orientation.w = target_quaternion[0]
     self.attitude_target_msg.orientation.x = target_quaternion[1]
     self.attitude_target_msg.orientation.y = target_quaternion[2]
     self.attitude_target_msg.orientation.z = target_quaternion[3]
 
-
+    # print("type_mask: ", self.attitude_target_msg.type_mask)
     print("w: ", target_quaternion[0])
     print("x: ", target_quaternion[1])
     print("y: ", target_quaternion[2])
@@ -152,7 +149,10 @@ class blasterController:
   def run_node(self):
     while not rospy.is_shutdown():
       self.update_solver()
-      # self.rate.sleep()
+      try:
+        self.rate.sleep()
+      except rospy.ROSInterruptException:
+        pass
 
 
 if __name__ == '__main__':
@@ -177,8 +177,8 @@ if __name__ == '__main__':
   thrusterCoefficient = 3.7
 
   blaster_states = np.zeros((12))
-  yref = np.array([1.0, 0.0, 3.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.00, 0.0])  # pos, euler, linear vel, ang vel,  
-  blaster_params = {"yref": yref, "mass": mass,"J": J, "l_x": l_x, "l_y": l_y, "N": 60, "yaw_coefficient": yaw_coefficient, "blastThruster": thrusterCoefficient}
+  yref = np.array([0.0, 0.0, 3.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.00, 0.0])  # pos, euler, linear vel, ang vel,  
+  blaster_params = {"yref": yref, "mass": mass,"J": J, "l_x": l_x, "l_y": l_y, "N": 30, "yaw_coefficient": yaw_coefficient, "blastThruster": thrusterCoefficient}
   try: 
     blasterController(blaster_params)
     rospy.spin()
