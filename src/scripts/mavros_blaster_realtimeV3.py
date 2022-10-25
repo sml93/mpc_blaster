@@ -25,7 +25,7 @@ class blasterController:
 
   def init_nodes(self):
     rospy.init_node('blaster_controller')
-    self.rate = rospy.Rate(20)
+    self.rate = rospy.Rate(100)
     self.init_pubsubs()
     self.run_node()
     self.rate.sleep()
