@@ -45,7 +45,7 @@ if __name__ == "__main__":
     simU = np.ndarray((Nsim, nu))
 
     x0 = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-    yref = np.array([0.0, 0.0, 3.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.2, 0.0, 0, 0, 0, 0, 0.0, 0, 0])
+    yref = np.array([0.0, 0.0, 3.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1.0, 0.0, 0, 0, 0, 0, 0.0, 0, 0])
     t = np.linspace(0, Tf/N*Nsim, Nsim+1)
     simX[0, :] = x0
 
@@ -111,19 +111,20 @@ if __name__ == "__main__":
     plt.plot(t, simX[:, 2], label='z')
     plt.legend()
     plt.show()
+
     plt.plot(t, simX[:, 14], label='POC_{x}')
     plt.plot(t, simX[:, 15], label='POC_{y}')
     plt.plot(t, simX[:, 16], label='POC_{z}')
     plt.legend()
     plt.show()
 
-    plt.plot(t, simX[:, 3], label='phi')
-    plt.plot(t, simX[:, 4], label='tetha')
-    plt.plot(t, simX[:, 5], label='psi')
+    plt.plot(t, np.rad2deg(simX[:, 3]), label='phi')
+    plt.plot(t, np.rad2deg(simX[:, 4]), label='tetha')
+    plt.plot(t, np.rad2deg(simX[:, 5]), label='psi')
     plt.legend()
     plt.show()
 
-    plt.plot(t, simX[:, 12], label='alpha1')
-    plt.plot(t, simX[:, 13], label='alpha2')
+    plt.plot(t, np.rad2deg(simX[:, 12]), label='alpha1')
+    plt.plot(t, np.rad2deg(simX[:, 13]), label='alpha2')
     plt.legend()
     plt.show()
