@@ -113,9 +113,10 @@ class blasterController:
     self.blaster_states[11] = round(msg.twist.twist.angular.z, 6)
 
   def yref_callback(self, data):
-    self.yref_des[0] = data.pose.position.x
-    self.yref_des[1] = data.pose.position.y
-    self.yref_des[2] = data.pose.position.z
+    self.yref_og = self.yref
+    self.yref[0] = data.pose.position.x
+    self.yref[1] = data.pose.position.y
+    self.yref[2] = data.pose.position.z
 
   def ranger_callback(self, msg):
     ## Callback for standoff topic
