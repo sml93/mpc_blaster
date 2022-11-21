@@ -72,6 +72,7 @@ class blasterController:
     self.ranger_sub = rospy.Subscriber('/lw20_ranger', LaserScan, self.ranger_callback)
     self.nozzle_sub = rospy.Subscriber('/gimbal_angles', MountControl, self.nozzle_callback)
     self.yref_des_sub = rospy.Subscriber('/yref_des', PoseStamped, self.yref_callback)
+    self.poc_des_sub = rospy.Subscriber('/poc_des', PoseStamped, self.poc_callback)
     # self.swivel_angles_subscriber = rospy.Subscriber('/swivel_angles', Float64MultiArray, self.swivel_angles)
     self.attitude_target_msg = AttitudeTarget()
     self.poc_pub = rospy.Publisher('/poc_position', PoseStamped, queue_size=100)
@@ -82,15 +83,15 @@ class blasterController:
     # init drone params
     Tf = 2.0
     Q = np.zeros((17, 17))
-    np.fill_diagonal(Q, [1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 0.5e1, 0.5e1, 0.5e1, 1e1, 1e1, 1e1, 1e-2, 1e-2, 1e1, 1e1, 1e2]) # position, euler, velocity, angular velocity, swivel angles, POC.
+    np.fill_diagonal(Q, [1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 0.5e1, 0.5e1, 0.5e1, 1e1, 1e1, 1e1, 1e-2, 1e-2, 1e1, 1e1, 1e1]) # position, euler, velocity, angular velocity, swivel angles, POC.
     # np.fill_diagonal(Q, [1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 0.5e1, 0.5e1, 0.5e1, 1e1, 1e1, 1e1, 1e-10, 1e-10, 1e-10, 1e-10, 1e-10]) # position, euler, velocity, angular velocity, swivel angles, POC.
     Q_t = 10*Q
     R = np.zeros((6, 6))
     np.fill_diagonal(R, [5e-1, 5e-1, 5e-1, 5e-1, 1e-5, 1e-5])
     # statesBound = np.array([[-10, -5, -1.0, -0.174532925, -0.174532925, -0.349066, -1.0, -1.0, -0.5, -0.0872665, -0.0872665, -0.0872665, -0.174532925, -0.523599, -5, -5, -5.0],
     #                         [10, 5, 10, 0.174532925, 0.174532925, 0.349066, 1.0, 1.0, 0.5, 0.0872665, 0.0872665, 0.0872665, 1.22173, 0.523599, 5, 5, 10.0]])
-    statesBound = np.array([[-10, -5, -1.0, -0.174532925, -0.174532925, -0.349066, -1.0, -1.0, -0.5, -0.0872665, -0.0872665, -0.0872665, -1.22173, -0.523599, -5, -5, -5.0],
-                            [10, 5, 10, 0.174532925, 0.174532925, 0.349066, 1.0, 1.0, 0.5, 0.0872665, 0.0872665, 0.0872665, 0.174532925, 0.523599, 5, 5, 10.0]])
+    statesBound = np.array([[-10, -5, -1.0, -0.174532925, -0.174532925, -0.349066, -1.0, -1.0, -0.5, -0.0872665, -0.0872665, -0.0872665, -1.22173, -0.1745329, -5, -5, -5.0],
+                            [10, 5, 10, 0.174532925, 0.174532925, 0.349066, 1.0, 1.0, 0.5, 0.0872665, 0.0872665, 0.0872665, 0.174532925, 0.1745329, 5, 5, 10.0]])
     controlBound = np.array([[0, 0, 0, 0, -0.0872665, -0.0872665], [65, 65, 65, 65, 0.0872665, 0.0872665]])
     b = blasterModel(self.mass, self.J, self.l_x, self.l_y, self.N, Tf, self.yaw_coeff, Q, R, Q_t, self.blastThruster, statesBound, controlBound)
     b.generateModel()
@@ -123,12 +124,19 @@ class blasterController:
     self.blaster_states[10] = round(msg.twist.twist.angular.y, 6)
     self.blaster_states[11] = round(msg.twist.twist.angular.z, 6)
 
+
   def yref_callback(self, data):
     # Store original yref
     self.yref_og = self.yref
     self.yref[0] = data.pose.position.x
     self.yref[1] = data.pose.position.y
     self.yref[2] = data.pose.position.z
+
+
+  def poc_callback(self, data):
+    self.yref[14] = data.pose.position.x
+    self.yref[15] = data.pose.position.y
+    self.yref[16] = data.pose.position.z
 
 
   def ranger_callback(self, msg):
@@ -153,9 +161,10 @@ class blasterController:
     # To publish poc x/y/z
     if (self.rmse(self.sim_poc[14], self.yref[14]) <= 0.05) and (self.rmse(self.sim_poc[15], self.yref[15]) <= 0.05) and (self.rmse(self.sim_poc[16], self.yref[16]) <= 0.05):
       self.blaster_states[12:17] = self.blaster_states_last
+      print('states: ', self.blaster_states) 
     else:
       self.sim_poc = self.integrator.get("x")
-      # self.update_blaster_states_last()
+      # self.update_blaster_states_last()yref_og
     # print('states: ', self.blaster_states) 
 
 
@@ -214,7 +223,7 @@ class blasterController:
     print('u3: ', round(self.ocp_solver.get(5, "u")[3],3))
 
     print('standoff: ', round(self.standoff, 3))
-    # print('yref: ', self.yref)
+    print('yref: ', self.yref)
 
     self.ff_atti_pub.publish(self.attitude_target_msg)
 
@@ -228,11 +237,11 @@ class blasterController:
     self.poc_solve()                                                # Integrate once store and store old blaster states
     self.blaster_states[12:17] = self.sim_poc[12:17]                # Update blaster states for POC stuff
     self.update_blaster_states_last()
-    print('states: ', self.blaster_states) 
+    
    
-    self.poc_target_msg.pose.position.x = self.blaster_states[14]
-    self.poc_target_msg.pose.position.y = self.blaster_states[15]
-    self.poc_target_msg.pose.position.z = self.blaster_states[16]
+    self.poc_target_msg.pose.position.x = self.yref[14]
+    self.poc_target_msg.pose.position.y = self.yref[15]
+    self.poc_target_msg.pose.position.z = self.yref[16]
     self.poc_pub.publish(self.poc_target_msg)
 
 
@@ -273,7 +282,7 @@ if __name__ == '__main__':
   blaster_states = np.zeros(17)
   force_lock = False
   #                x    y    z                                     pocx pocy poz
-  yref = np.array([3.5, 0.0, 3.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4.0, 0.0, 1.0, 0, 0, 0, 0.0, 0, 0])
+  yref = np.array([3.0, 0.0, 3.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3.5, 0.0, 0.0, 0, 0, 0, 0.0, 0, 0])
   blaster_params = {"force_lock": force_lock, "yref": yref, "mass": mass,"J": J, "l_x": l_x, "l_y": l_y, "N": 30, "yaw_coefficient": yaw_coefficient, "blastThruster": thrusterCoefficient}
   try: 
     blasterController(blaster_params)
