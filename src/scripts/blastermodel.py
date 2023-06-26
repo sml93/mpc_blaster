@@ -161,6 +161,7 @@ class blasterModel:
 
         self._euler_angles_dot = inv(R_to_omega)@self._omega
         self._v_dot = (1/self._M) * (self._R @ vertcat(0, 0, (self._T[0] + self._T[1] + self._T[2] + self._T[3])) + self._R @ self._R_gimbal @ vertcat(0, 0, self._T_blast)) + self._gravity
+        # self._v_dot = (1/self._M) * (self._R @ vertcat(0, 0, (self._T[0] + self._T[1] + self._T[2] + self._T[3])) + self._R @ self._R_gimbal @ vertcat(0, 0, 18)) + self._gravity
         self._omega_dot = inv(self._J) @ (self._Moments - cross(self._omega, self._J @ self._omega))
         self._poc_dot = self._Jac_p @ self._v + self._Jac_euler @ self._euler_angles_dot + self._Jac_angles @ vertcat(self._alpha1_dot, self._alpha2_dot)
         self._alpha1_dot_ = self._alpha1_dot
@@ -278,7 +279,7 @@ class blasterModel:
         ocp.solver_options.nlp_solver_type = 'SQP_RTI'  # SQP_RTI
         ocp.solver_options.qp_solver_iter_max = 500
         params = np.zeros((self._Jac_p.rows()*self._Jac_p.columns() + self._Jac_euler.rows()*self._Jac_euler.columns() + self._Jac_angles.rows()*self._Jac_angles.columns() + 1))
-        params[-1] = 2.2*9.81
+        params[-1] = 0.0*9.81         ## <--- Try change here
         ocp.parameter_values = params
 
         ocp.solver_options.qp_solver_cond_N = self._N

@@ -34,11 +34,11 @@ class blasterController:
 
   def thrusterCumul(self, t1, t2, t3, t4):
     avg = thrusterCoefficient*np.mean([t1,t2,t3,t4])/9.81
-    print(avg)
+    # print(avg)
     T_sp = (0.0014*np.power(avg,3)) - (0.0263*np.power(avg,2)) + (0.2464*avg) -0.0286
-    if (T_sp >= 1.0):
-      T_sp = 0.8
-    print('Thrust: ', round(T_sp,3))
+    # if (T_sp >= 1.0):
+    #   T_sp = 0.8
+    # print('Thrust: ', round(T_sp,3))
     return T_sp
 
   def init_params(self, blaster_params):
@@ -90,8 +90,10 @@ class blasterController:
     np.fill_diagonal(R, [5e-1, 5e-1, 5e-1, 5e-1, 1e-5, 1e-5])
     # statesBound = np.array([[-10, -5, -1.0, -0.174532925, -0.174532925, -0.349066, -1.0, -1.0, -0.5, -0.0872665, -0.0872665, -0.0872665, -0.174532925, -0.523599, -5, -5, -5.0],
     #                         [10, 5, 10, 0.174532925, 0.174532925, 0.349066, 1.0, 1.0, 0.5, 0.0872665, 0.0872665, 0.0872665, 1.22173, 0.523599, 5, 5, 10.0]])
-    statesBound = np.array([[-10, -5, -1.0, -0.174532925, -0.174532925, -0.349066, -1.0, -1.0, -0.5, -0.0872665, -0.0872665, -0.0872665, -1.22173, -0.1745329, -5, -5, -5.0],
-                            [10, 5, 10, 0.174532925, 0.174532925, 0.349066, 1.0, 1.0, 0.5, 0.0872665, 0.0872665, 0.0872665, 0.174532925, 0.1745329, 5, 5, 10.0]])
+    # statesBound = np.array([[-10, -5, -1.0, -0.174532925, -0.174532925, -0.349066, -1.0, -1.0, -0.5, -0.0872665, -0.0872665, -0.0872665, -1.22173, -0.1745329, -5, -5, -5.0],
+    #                         [10, 5, 10, 0.174532925, 0.174532925, 0.349066, 1.0, 1.0, 0.5, 0.0872665, 0.0872665, 0.0872665, 0.174532925, 0.1745329, 5, 5, 10.0]])               <-- Working one
+    statesBound = np.array([[-10, -5, -1.0, -0.174532925, -0.174532925, -0.349066, -1.0, -1.0, -0.5, -0.0872665, -0.0872665, -0.0872665, -1.22173, -0.0, -10, -10, -10.0],
+                            [10, 5, 10, 0.174532925, 0.174532925, 0.349066, 1.0, 1.0, 0.5, 0.0872665, 0.0872665, 0.0872665, 0.174532925, 0.0, 10, 10, 10.0]])
     controlBound = np.array([[0, 0, 0, 0, -0.0872665, -0.0872665], [65, 65, 65, 65, 0.0872665, 0.0872665]])
     b = blasterModel(self.mass, self.J, self.l_x, self.l_y, self.N, Tf, self.yaw_coeff, Q, R, Q_t, self.blastThruster, statesBound, controlBound)
     b.generateModel()
@@ -198,7 +200,12 @@ class blasterController:
     
     self.integrator.set('p', params)
 
-    print(self.ocp_solver.get(5, "x"))
+    print(self.ocp_solver.get(5, "x"))            ## <--- Try change here
+    # print(self.ocp_solver.get(20, "x"))           ## <--- Try change here
+    o = self.ocp_solver.get(5, "x")[14] - self.ocp_solver.get(20, "x")[0]
+    a = self.ocp_solver.get(5, "x")[2]
+    alph = np.rad2deg(np.arctan(o/a))
+    print("Actual alpha: ", alph)
     print(f"ocp_solver.get_cost(): {self.ocp_solver.get_cost()}")
     
     self.attitude_target_msg.type_mask = 7
@@ -275,14 +282,15 @@ if __name__ == '__main__':
 
   yaw_coefficient = 0.03
   # yaw_coefficient = 0.01
-  blastThruster = 2.2*9.81
+  blastThruster = 2.2*9.81         ## <--- Try change here
   # blastThruster = 0.0
   thrusterCoefficient = 3.0
   yref_des = np.zeros(23)
   blaster_states = np.zeros(17)
   force_lock = False
-  #                x    y    z                                     pocx pocy poz
-  yref = np.array([3.0, 0.0, 3.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3.5, 0.0, 0.0, 0, 0, 0, 0.0, 0, 0])
+  #                x    y    z                                 sa1     sa2  pocx pocy poz
+  # yref = np.array([3.0, 0.0, 3.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.523598, 0.0, 5.0207, 0.0, 0.0, 0, 0, 0, 0.0, 0, 0])
+  yref = np.array([3.0, 0.0, 3.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0, 0.0, 5.0207, 0.0, 0.0, 0, 0, 0, 0.0, 0, 0])
   blaster_params = {"force_lock": force_lock, "yref": yref, "mass": mass,"J": J, "l_x": l_x, "l_y": l_y, "N": 30, "yaw_coefficient": yaw_coefficient, "blastThruster": thrusterCoefficient}
   try: 
     blasterController(blaster_params)

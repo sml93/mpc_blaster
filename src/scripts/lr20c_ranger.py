@@ -50,7 +50,7 @@ def talker():
       msg.data = round(distanceM,3)
 
       # Do what you want with the distance information here
-      rospy.loginfo('pe_ranger: {0} m'.format(pe_ranger))
+      # rospy.loginfo('pe_ranger: {0} m'.format(pe_ranger))
       rospy.loginfo('standoff: {0:.2f} m'.format(distanceM))
       pub.publish(msg)
 
