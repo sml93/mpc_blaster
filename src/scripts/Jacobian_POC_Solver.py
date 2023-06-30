@@ -299,13 +299,18 @@ class Jacobian_POC_Solver:
 
         return (POC_plus - POC) / self._eps
 
+    def getPOC(self):
+
+        return self._POC
+
 
 if __name__ == "__main__":
 
     solver = Jacobian_POC_Solver(150, 1.0, 0.00015)
     solver.initialise()
     t0 = time.time()
-    solver.solveJacobians([0, -0.05, 0], [0.2117, 0], [0.6, 0, 3.5])
+    # solver.solveJacobians([0, -0.05, 0], [0.2117, 0], [0.6, 0, 3.5])
+    solver.solveJacobians([-2.69814490e-04,  1.45444165e-03, -1.44617654e-07], [2.90888333e-03, -1.59981717e-23], [3.0, 0.5, 1.0])
     print("Time Elapsed: ", time.time() - t0)
     sol = solver._solveRootFindingProblem(0.001, solver._function, solver._initConditions)
     

@@ -4,12 +4,13 @@ import numpy as np
 import time
 from matplotlib import pyplot as plt
 from casadi import *
+import csv
 
 if __name__ == "__main__":
 
     # GENERATE REQUIRED CONTROLLER AND INTEGRATOR
 
-    mass = 9.0
+    mass = 8.0
     J = np.eye(3)
     J[0, 0] = 0.50781
     J[1, 1] = 0.47314
@@ -21,12 +22,18 @@ if __name__ == "__main__":
     yaw_coefficient = 0.03
     blastThruster = 2.2*9.81
     Q = np.zeros((17, 17))
-    np.fill_diagonal(Q, [1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 0.5e1, 0.5e1, 0.5e1, 1e1, 1e1, 1e1, 1e-2, 1e-2, 1e3, 1e3, 1e3]) # position, euler, velocity, angular velocity, swivel angles, POC.
+    # np.fill_diagonal(Q, [1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 0.5e1, 0.5e1, 0.5e1, 1e1, 1e1, 1e1, 1e-2, 1e-2, 1e3, 1e3, 1e3]) # position, euler, velocity, angular velocity, swivel angles, POC.
+    #                                                                                      changed this weights to let the algo take alpha into account. 
+    np.fill_diagonal(Q, [1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 0.5e1, 0.5e1, 0.5e1, 1e1, 1e1, 1e1, 1e3, 1e3, 1e1, 1e1, 1e1]) # position, euler, velocity, angular velocity, swivel angles, POC.
     Q_t = 10*Q
     R = np.zeros((6, 6))
-    np.fill_diagonal(R, [5e-2, 5e-2, 5e-2, 5e-2, 1e-5, 1e-5])
-    statesBound = np.array([[-1.5, -1.5, 0, -0.174532925, -0.174532925, -0.349066, -1.0, -1.0, -1.0, -0.0872665, -0.0872665, -0.0872665, -0.174532925, -0.523599, -1.5, -1.5, -2.5],
-                            [1.5, 1.5, 5.0, 0.174532925, 0.174532925, 0.349066, 1.0, 1.0, 1.0, 0.0872665, 0.0872665, 0.0872665, 1.22173, 0.523599, 1.5, 1.5, 2.5]])
+    # np.fill_diagonal(R, [5e-2, 5e-2, 5e-2, 5e-2, 1e-5, 1e-5])
+    np.fill_diagonal(R, [5e-1, 5e-1, 5e-1, 5e-1, 1e-5, 1e-5])
+    # statesBound = np.array([[-1.5, -1.5, 0, -0.174532925, -0.174532925, -0.349066, -1.0, -1.0, -1.0, -0.0872665, -0.0872665, -0.0872665, -0.174532925, -0.523599, -1.5, -1.5, -2.5],
+    #                         [1.5, 1.5, 5.0, 0.174532925, 0.174532925, 0.349066, 1.0, 1.0, 1.0, 0.0872665, 0.0872665, 0.0872665, 1.22173, 0.523599, 1.5, 1.5, 2.5]])
+    # controlBound = np.array([[0, 0, 0, 0, -0.0872665, -0.0872665], [65, 65, 65, 65, 0.0872665, 0.0872665]])
+    statesBound = np.array([[-10, -5, -1.0, -0.349065, -0.349065, -0.349066, -1.0, -1.0, -0.5, -0.0872665, -0.0872665, -0.0872665, -np.deg2rad(70), -np.deg2rad(0), -10, -10, -10],
+                            [10, 5, 10, 0.349065, 0.349065, 0.349066, 1.0, 1.0, 0.5, 0.0872665, 0.0872665, 0.0872665, np.deg2rad(10), np.deg2rad(0), 10, 10, 10]])
     controlBound = np.array([[0, 0, 0, 0, -0.0872665, -0.0872665], [65, 65, 65, 65, 0.0872665, 0.0872665]])
     b = blasterModel(mass, J, l_x, l_y, N, Tf, yaw_coefficient, Q, R, Q_t, blastThruster, statesBound, controlBound)
     b.generateModel()
@@ -45,7 +52,9 @@ if __name__ == "__main__":
     simU = np.ndarray((Nsim, nu))
 
     x0 = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-    yref = np.array([0.5, 0.0, 3.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1.0, 0.0, 0, 0, 0, 0, 0.0, 0, 0])
+    # yref = np.array([0.5, 0.0, 3.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1.0, 0.0, 0, 0, 0, 0, 0.0, 0, 0])
+    #                 x    y    z                                    sa1           sa2        pocx pocy pocz
+    yref = np.array([2.5, 0.5, 1.25, 0, 0, 0, 0, 0, 0, 0, 0, 0, np.deg2rad(-50), np.deg2rad(0), 4.665, 0.5, 0.0, 0, 0, 0, 0.0, 0, 0])    # The alpha angle is in the negative region due to the way it rotates
     t = np.linspace(0, Tf/N*Nsim, Nsim+1)
     simX[0, :] = x0
 
@@ -102,7 +111,18 @@ if __name__ == "__main__":
 
         # update state
         xcurrent = integrator.get("x")
+        # print("xcurrent: ",xcurrent)
         simX[i+1,:] = xcurrent
+
+        updated_euler_angles = xcurrent[3:6]
+        updated_motor_angles = xcurrent[12:14]
+        updated_position = xcurrent[0:3]
+        print(updated_euler_angles)
+        print(updated_euler_angles[0])
+        solver.setInitConditions(updated_euler_angles, updated_motor_angles, updated_position)
+        solver.solveJacobians(updated_euler_angles, yref[12:14], [yref[14], yref[15], 0.5])
+        J_mot, J_eul, J_pos = solver.getJacobians()
+        xcurrent[14:17] = solver.getPOC()
 
         print(f"Time per step: {time.time() - t0}")
 
@@ -119,7 +139,7 @@ if __name__ == "__main__":
     plt.show()
 
     plt.plot(t, np.rad2deg(simX[:, 3]), label='phi')
-    plt.plot(t, np.rad2deg(simX[:, 4]), label='tetha')
+    plt.plot(t, np.rad2deg(simX[:, 4]), label='theta')
     plt.plot(t, np.rad2deg(simX[:, 5]), label='psi')
     plt.legend()
     plt.show()
@@ -128,3 +148,35 @@ if __name__ == "__main__":
     plt.plot(t, np.rad2deg(simX[:, 13]), label='alpha2')
     plt.legend()
     plt.show()
+
+
+    f1 = open('calcPOS.csv', 'w')
+    writer = csv.writer(f1)
+
+    for i in range(len(t)):
+        writer.writerow([t[i], simX[i, 0], simX[i, 1], simX[i, 2]])
+    f1.close()
+
+
+    f2 = open('calcPOC.csv', 'w')
+    writer = csv.writer(f2)
+
+    for i in range(len(t)):
+        writer.writerow([t[i], simX[i, 14], simX[i, 15], simX[i, 16]])
+    f2.close()
+
+
+    f3 = open('calcEUL.csv', 'w')
+    writer = csv.writer(f3)
+
+    for i in range(len(t)):
+        writer.writerow([t[i], np.rad2deg(simX[i, 3]), np.rad2deg(simX[i, 4]), np.rad2deg(simX[i, 5])])
+    f3.close()
+
+
+    f4 = open('calcALP.csv', 'w')
+    writer = csv.writer(f4)
+
+    for i in range(len(t)):
+        writer.writerow([t[i], np.rad2deg(simX[i, 12]), np.rad2deg(simX[i, 13])])
+    f4.close()
